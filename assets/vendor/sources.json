@@ -1,0 +1,18 @@
+[
+  {
+    "package": "@supabase/supabase-js",
+    "version": "2.116.0",
+    "source": "https://registry.npmjs.org/@supabase/supabase-js/-/supabase-js-2.116.0.tgz",
+    "integrity_verified": true,
+    "file": "supabase.js",
+    "sha256": "84ee9bf45695c1dd3ba1595b6bcfb0f09672434631351ffc8ebe9140545d5ff6"
+  },
+  {
+    "package": "dompurify",
+    "version": "3.4.15",
+    "source": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.15.tgz",
+    "integrity_verified": true,
+    "file": "purify.min.js",
+    "sha256": "f263b05369e050fa175d4ecb9c9358eb4253602d510297adfb31df48b2f1c4d5"
+  }
+]

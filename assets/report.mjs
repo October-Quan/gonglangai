@@ -1,0 +1,62 @@
+// Preserve the source report's values and order while grouping 12 data fields into 7 display columns.
+const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
+function lines(cell){const clone=cell.cloneNode(true);clone.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));return clone.textContent.split('\n').map(s=>s.trim()).filter(Boolean);}
+const number=value=>/^\d+(\.\d+)?$/.test(value||'')?Number(value).toLocaleString('en-US',{maximumFractionDigits:8}):value||'待核验';
+function details(title,values,cls='report-details'){const d=el('details',cls);d.append(el('summary','',title));values.forEach(value=>d.append(el('div','',value)));return d;}
+function badge(value){return el('span','badge '+({'优先守位':'green','先看广告效率':'blue','待核验':'amber'}[value]||''),value);}
+function trend(values){
+ const wrap=el('div','search-trend'),numbers=values.map(s=>{const m=s.match(/：([\d,.]+)$/);return m?Number(m[1].replaceAll(',','')):null;});
+ if(numbers.length>1&&numbers.every(n=>Number.isFinite(n)&&n>=0)){
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 150 40');svg.classList.add('trend-chart');svg.setAttribute('role','img');svg.setAttribute('aria-label','近13周搜索量趋势，具体数值可展开查看');
+  const poly=document.createElementNS(ns,'polyline'),max=Math.max(...numbers),min=Math.min(...numbers);
+  poly.setAttribute('points',numbers.map((n,i)=>`${3+i*144/(numbers.length-1)},${36-(n-min)*30/(max-min||1)}`).join(' '));poly.setAttribute('fill','none');poly.setAttribute('stroke','#426de1');poly.setAttribute('stroke-width','2');svg.append(poly);wrap.append(svg);
+ }
+ wrap.append(details('展开逐周数据',values,'trend-details'));return wrap;
+}
+function thumbnail(source){
+ const wrap=el('span','thumbnail');
+ const missing=()=>{wrap.replaceChildren(el('span','image-missing','主图待核验'));};
+ if(!source){missing();return wrap;}
+ let url;try{url=new URL(source.getAttribute('src'));if(url.protocol!=='https:')throw new Error();}catch{missing();return wrap;}
+ const pending=el('span','thumbnail-loading','加载中'),img=el('img');img.width=44;img.height=44;img.alt='竞品商品主图';img.loading='lazy';img.referrerPolicy='no-referrer';
+ img.addEventListener('load',()=>{pending.remove();img.classList.add('loaded');},{once:true});img.addEventListener('error',missing,{once:true});wrap.append(pending,img);img.src=url.href;return wrap;
+}
+export function renderReport(html,host,meta,note,ownAsin=''){
+ const fragment=window.DOMPurify.sanitize(html,{RETURN_DOM_FRAGMENT:true,ALLOWED_TAGS:['h1','p','div','table','thead','tbody','tr','th','td','br','hr','img'],ALLOWED_ATTR:['src','alt','width','height','scope'],FORBID_TAGS:['style','script','iframe','form','input','svg','math']});
+ const source=fragment.querySelector('table');
+ if(!source||source.querySelectorAll('thead th').length!==12||!source.tBodies.length||[...source.tBodies[0].rows].some(r=>r.cells.length!==12))throw new Error('报告结构无法识别，请联系管理员核验。');
+ const paragraphs=[...fragment.querySelectorAll('p')];meta.replaceChildren(...paragraphs.slice(0,2));note.replaceChildren(...paragraphs.slice(2));
+ const table=el('table','report-table opportunity-table');const group=el('colgroup');
+ for(const width of [190,180,230,200,170,245,345]){const col=el('col');col.style.width=width+'px';group.append(col);}table.append(group);
+ const head=el('thead'),header=el('tr');for(const text of ['关键词／标签','自己的广告实绩','自己 vs 竞对自然位','搜索热度与趋势','竞争与竞价','点击前三／份额','打法判断＋建议'])header.append(el('th','',text));head.append(header);table.append(head);const body=el('tbody');table.append(body);
+ for(const row of source.tBodies[0].rows){
+  const c=[...row.cells],data=c.map(lines),category=c[0].textContent.trim(),keyword=c[1].textContent.trim(),tr=el('tr');tr.dataset.keyword=keyword;
+  const word=el('th','keyword-cell');word.scope='row';word.append(el('div','keyword-name',keyword),badge(category));
+  const compParts=c[7].innerHTML.split(/<hr\s*\/?\s*>/i).map(part=>{const div=el('div');div.innerHTML=part;return div;});
+  const topOwn=ownAsin&&compParts.some(part=>lines(part)[0]===ownAsin);
+  if(topOwn)word.append(el('span','fact-tag','✓ 自己在点击前三'));
+  const ads=el('td','ads-cell');
+  if(c[10].textContent.includes('无投放'))ads.append(el('strong','metric-empty','无投放'),el('div','secondary','仅本报表周期'));
+  else{
+   const fields=Object.fromEntries(data[10].map(line=>{const index=line.indexOf('：');return [line.slice(0,index),line.slice(index+1)];}));
+   const primary=el('div','ad-primary');primary.append(el('strong','metric-value',number(fields['订单'])),el('span','','单'));ads.append(primary);
+   const acos=el('div','acos-line');acos.append(el('span','','ACOS '),el('strong','',fields['ACOS']||'待核验'));ads.append(acos,el('div','secondary','花费 '+number(fields['花费'])+' USD'));
+   ads.append(details('广告明细',data[10]));
+  }
+  const ranks=el('td','rank-cell'),comparison=el('div','rank-comparison');
+  const self=el('div');self.append(el('span','secondary','自己'),el('strong','rank-own',/^\d+$/.test(data[8][0])?'#'+data[8][0]:data[8][0]));
+  const rival=el('div');rival.append(el('span','secondary','最强竞对'),el('strong','rank-rival',/^\d+$/.test(data[9][1])?'#'+data[9][1]:data[9][1]||'待核验'));
+  comparison.append(self,el('span','rank-vs','vs'),rival);ranks.append(comparison,el('div','secondary rival-asin',data[9][0]));
+  if(data[8][0]==='1')ranks.append(el('span','fact-tag','自己自然位已第1'));
+  ranks.append(details('排名采集时间',['自己：'+(data[8][1]||'待核验'),'竞对：'+(data[9][2]||'待核验')]));
+  const heat=el('td','heat-cell');heat.append(el('div','metric-label','周搜索量'),el('strong','search-value',number(data[3][0])),el('div','secondary',data[3].slice(1).join(' ')),el('div','secondary','流量 '+number(data[2][0])),trend(data[6]));
+  const competition=el('td','competition-cell');competition.append(el('div','metric-label','竞争难度'),el('strong','difficulty-value',number(data[4][0])));
+  const bid=el('div','bid-values');data[5].forEach(value=>bid.append(el('div','',value)));competition.append(bid,el('div','secondary','币种 USD'));
+  const top=el('td','top-cell'),grid=el('div','competitors');
+  for(const part of compParts){const bits=lines(part),item=el('div','competitor'),isOwn=ownAsin&&bits[0]===ownAsin;item.append(thumbnail(part.querySelector('img')),el('div','competitor-asin',bits[0]||'待核验'));if(isOwn)item.append(el('span','own-label','自己'));item.append(el('div','share-value',bits.find(t=>t.startsWith('点击份额原值'))?.replace('点击份额原值','').trim()||'份额待核验'));grid.append(item);}
+  top.append(grid,el('div','secondary share-note','点击份额为接口原值'));
+  const advice=el('td','advice-cell');const title=el('div','advice-title');title.append(badge(category));advice.append(title,el('p','advice-copy',c[11].textContent));
+  tr.append(word,ads,ranks,heat,competition,top,advice);body.append(tr);
+ }
+ host.replaceChildren(table);return body.rows.length;
+}
