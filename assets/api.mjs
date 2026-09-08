@@ -1,4 +1,5 @@
 import {config} from './config.mjs';
+import {completeEmailLogin} from './auth-return.mjs';
 export const preview = ['localhost','127.0.0.1'].includes(location.hostname) && new URLSearchParams(location.search).get('preview') === '1';
 const root = new URL('../',import.meta.url);
 export function page(path=''){const url=new URL(path,root);if(preview)url.searchParams.set('preview','1');return url.href;}
@@ -9,6 +10,7 @@ async function realApi(){
  const unwrap=({data,error})=>{if(error)throw error;return data;};
  return {
   async user(){return unwrap(await client.auth.getUser()).user;},
+  async loginUser(){return completeEmailLogin(client);},
   async loginLink(email,register){return unwrap(await client.auth.signInWithOtp({email,options:{shouldCreateUser:register,emailRedirectTo:page('')}}));},
   async logout(){unwrap(await client.auth.signOut({scope:'local'}));},
   async tasks(userId,offset=0){const r=await client.from('gonglangai_tasks').select('id,asin,status,created_at,failure_reason,report_url',{count:'exact'}).eq('user_id',userId).order('created_at',{ascending:false}).range(offset,offset+7);if(r.error)throw r.error;return {rows:r.data,total:r.count};},
@@ -22,6 +24,7 @@ async function realApi(){
 export const api=preview ? (await import('/__preview__/adapter.mjs')).api : await realApi();
 export function humanError(error){
  const code=error?.code||'',msg=String(error?.message||'');
+ if(/pkce_code_verifier_not_found|code verifier|flow_state_not_found|bad_code_verifier/i.test(code+' '+msg))return '此浏览器未能匹配这次登录请求。请在同一个浏览器发送并打开最新链接：若在Codex内置网页发送，请回到那里打开链接；也可全程使用Chrome重新登录。';
  if(/Auth session missing|refresh_token|session_not_found|JWT expired/i.test(code+' '+msg)||error?.status===401)return '登录已失效，请重新登录。';
  if(/rate_limit|over_email_send_rate_limit|over_request_rate_limit/i.test(code)||error?.status===429)return '操作太频繁，请稍等一分钟再试。';
  if(/otp_expired|access_denied|expired/i.test(code+' '+msg))return '登录链接已失效，请重新发送并使用最新邮件中的链接。';

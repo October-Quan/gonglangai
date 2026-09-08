@@ -52,10 +52,10 @@ async function tool(){
 }
 async function login(){
  let register=false,failures=0,cooldown=false;
- const select=mode=>{register=mode;for(const [id,active] of [['login-tab',!mode],['register-tab',mode]])$(id).setAttribute('aria-selected',String(active));$('login-submit').textContent=mode?'发送注册链接':'发送登录链接';$('auth-help').textContent=mode?'使用邮箱创建账号，无需设置密码。':'通过邮箱中的安全链接登录，无需密码。';message('auth-message','');};
+ const select=mode=>{register=mode;for(const [id,active] of [['login-tab',!mode],['register-tab',mode]])$(id).setAttribute('aria-selected',String(active));$('login-submit').textContent=mode?'发送注册链接':'发送登录链接';$('auth-help').textContent=mode?'使用邮箱创建账号，无需设置密码。请在同一浏览器发送并打开链接。':'无需密码。请在同一浏览器发送并打开邮件链接；Codex内置网页与Chrome不互通。';message('auth-message','');};
  $('login-tab').addEventListener('click',()=>select(false));$('register-tab').addEventListener('click',()=>select(true));
  $('auth-form').addEventListener('submit',async e=>{e.preventDefault();if(cooldown||failures>=2)return;const email=$('email').value.trim();if(!$('email').checkValidity()){message('auth-message','请输入有效的邮箱地址。',true);return;}$('login-submit').disabled=true;cooldown=true;
-  try{await api.loginLink(email,register);failures=0;message('auth-message',preview?'预览模式：不会发送邮件。可从顶部进入工具页预览。':'请求已提交。请在当前设备打开最新邮件中的链接，完成后会进入工具页。若未收到，请检查垃圾邮件。');setTimeout(()=>{cooldown=false;$('login-submit').disabled=false;},60000);}
+  try{await api.loginLink(email,register);failures=0;message('auth-message',preview?'预览模式：不会发送邮件。可从顶部进入工具页预览。':'请求已提交。请在发送链接的同一浏览器打开最新邮件链接；如果邮件自动打开另一浏览器，请复制链接回到当前浏览器。若未收到，请检查垃圾邮件。');setTimeout(()=>{cooldown=false;$('login-submit').disabled=false;},60000);}
   catch(error){failures++;cooldown=false;message('auth-message',humanError(error)+(failures>=2?' 已停止重复请求，请联系管理员核验。':''),true);$('login-submit').disabled=failures>=2;}
  });
  const params=new URLSearchParams(location.hash.slice(1));if(params.has('error')){message('auth-message','登录链接无效或已过期，请重新发送并打开最新链接。',true);history.replaceState({},'',location.pathname+location.search);}
@@ -75,7 +75,7 @@ try{
  for(const anchor of document.querySelectorAll('[data-page-link]'))anchor.href=page(anchor.dataset.pageLink);
  if(kind==='login'){
   await login();
-  if(!preview){try{const user=await api.user();if(user)location.replace(page('tool/'));}catch(error){if(!/Auth session missing|session_not_found|refresh_token/i.test(String(error?.message)+' '+String(error?.code)))message('auth-message',humanError(error),true);}}
+  if(!preview){$('login-submit').disabled=true;try{const user=await api.loginUser();if(user)location.replace(page('tool/'));}catch(error){message('auth-message',humanError(error),true);}finally{$('login-submit').disabled=false;}}
  }else{
   try{currentUser=await api.user();}catch(error){if(/Auth session missing|session_not_found|refresh_token|JWT expired/i.test(String(error?.message)+' '+String(error?.code))||error?.status===401){goLogin();}else throw error;}
   if(currentUser){$('account-email').textContent=currentUser.email;$('workspace').hidden=false;$('initial-loading').hidden=true;api.onLogout(goLogin);
