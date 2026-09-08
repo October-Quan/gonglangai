@@ -1,4 +1,5 @@
 // Preserve the source report's values and order while grouping 12 data fields into 7 display columns.
+import {adFacts,parseMetric,assessOpportunity} from './opportunity.mjs';
 const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
 function lines(cell){const clone=cell.cloneNode(true);clone.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));return clone.textContent.split('\n').map(s=>s.trim()).filter(Boolean);}
 const number=value=>/^\d+(\.\d+)?$/.test(value||'')?Number(value).toLocaleString('en-US',{maximumFractionDigits:8}):value||'待核验';
@@ -34,20 +35,27 @@ export function renderReport(html,host,meta,note,ownAsin=''){
   const word=el('th','keyword-cell');word.scope='row';word.append(el('div','keyword-name',keyword),badge(category));
   const compParts=c[7].innerHTML.split(/<hr\s*\/?\s*>/i).map(part=>{const div=el('div');div.innerHTML=part;return div;});
   const topOwn=ownAsin&&compParts.some(part=>lines(part)[0]===ownAsin);
+  const fields=Object.fromEntries(data[10].filter(line=>line.includes('：')).map(line=>{const index=line.indexOf('：');return [line.slice(0,index),line.slice(index+1)];}));
+  const assessment=assessOpportunity({...adFacts(fields,!c[10].textContent.includes('无投放')),rank:parseMetric(data[8][0]),ownTop3:!!topOwn});
+  tr.dataset.candidate=String(assessment.candidate);
+  const targetBadge=el('span','badge '+assessment.tone,assessment.label);word.children[1].replaceWith(targetBadge);
+  if(category==='待核验'&&!assessment.label.includes('核验'))word.append(badge('待核验'));
+  if(assessment.candidate)tr.classList.add('push-candidate');
   if(topOwn)word.append(el('span','fact-tag','✓ 自己在点击前三'));
   const ads=el('td','ads-cell');
   if(c[10].textContent.includes('无投放'))ads.append(el('strong','metric-empty','无投放'),el('div','secondary','仅本报表周期'));
   else{
-   const fields=Object.fromEntries(data[10].map(line=>{const index=line.indexOf('：');return [line.slice(0,index),line.slice(index+1)];}));
    const primary=el('div','ad-primary');primary.append(el('strong','metric-value',number(fields['订单'])),el('span','','单'));ads.append(primary);
    const acos=el('div','acos-line');acos.append(el('span','','ACOS '),el('strong','',fields['ACOS']||'待核验'));ads.append(acos,el('div','secondary','花费 '+number(fields['花费'])+' USD'));
    ads.append(details('广告明细',data[10]));
   }
+  if(assessment.acosWithin!==null)ads.append(el('span','fact-tag '+(assessment.acosWithin?'target-pass':'target-over'),assessment.acosWithin?'ACOS ≤50% · 达标':'ACOS >50% · 超目标'));
   const ranks=el('td','rank-cell'),comparison=el('div','rank-comparison');
   const self=el('div');self.append(el('span','secondary','自己'),el('strong','rank-own',/^\d+$/.test(data[8][0])?'#'+data[8][0]:data[8][0]));
   const rival=el('div');rival.append(el('span','secondary','最强竞对'),el('strong','rank-rival',/^\d+$/.test(data[9][1])?'#'+data[9][1]:data[9][1]||'待核验'));
   comparison.append(self,el('span','rank-vs','vs'),rival);ranks.append(comparison,el('div','secondary rival-asin',data[9][0]));
   if(data[8][0]==='1')ranks.append(el('span','fact-tag','自己自然位已第1'));
+  if(assessment.rankReached)ranks.append(el('span','fact-tag','自然位前30名 · 已达标'));
   ranks.append(details('排名采集时间',['自己：'+(data[8][1]||'待核验'),'竞对：'+(data[9][2]||'待核验')]));
   const heat=el('td','heat-cell');heat.append(el('div','metric-label','周搜索量'),el('strong','search-value',number(data[3][0])),el('div','secondary',data[3].slice(1).join(' ')),el('div','secondary','流量 '+number(data[2][0])),trend(data[6]));
   const competition=el('td','competition-cell');competition.append(el('div','metric-label','竞争难度'),el('strong','difficulty-value',number(data[4][0])));
@@ -55,8 +63,14 @@ export function renderReport(html,host,meta,note,ownAsin=''){
   const top=el('td','top-cell'),grid=el('div','competitors');
   for(const part of compParts){const bits=lines(part),item=el('div','competitor'),isOwn=ownAsin&&bits[0]===ownAsin;item.append(thumbnail(part.querySelector('img')),el('div','competitor-asin',bits[0]||'待核验'));if(isOwn)item.append(el('span','own-label','自己'));item.append(el('div','share-value',bits.find(t=>t.startsWith('点击份额原值'))?.replace('点击份额原值','').trim()||'份额待核验'));grid.append(item);}
   top.append(grid,el('div','secondary share-note','点击份额为接口原值'));
-  const advice=el('td','advice-cell');const title=el('div','advice-title');title.append(badge(category));advice.append(title,el('p','advice-copy',c[11].textContent));
+  const advice=el('td','advice-cell');const title=el('div','advice-title');title.append(el('span','badge '+assessment.tone,assessment.label),el('span','secondary','按当前目标判断'));advice.append(title,el('p','advice-copy',assessment.action));
+  advice.append(details('生成时建议（历史规则）',['原分类：'+category,c[11].textContent]));
   tr.append(word,ads,ranks,heat,competition,top,advice);body.append(tr);
  }
- host.replaceChildren(table);return body.rows.length;
+ const count=[...body.rows].filter(row=>row.dataset.candidate==='true').length;
+ const overview=el('div','target-overview'),summary=el('div');summary.append(el('strong','','目标：ACOS ≤50% · 自然位前30名'),el('p','secondary',`推位候选 ${count} 个 / 共 ${body.rows.length} 词。依据本报告周期；候选不代表可盈利或必然提升排名。`));
+ const label=el('label','target-filter'),checkbox=el('input');checkbox.type='checkbox';label.append(checkbox,document.createTextNode(`仅看推位候选（${count}）`));overview.append(summary,label);meta.append(overview);
+ const empty=el('p','target-empty','当前报告没有符合目标的推位候选。');empty.hidden=true;empty.setAttribute('role','status');
+ checkbox.addEventListener('change',()=>{for(const row of body.rows)row.hidden=checkbox.checked&&row.dataset.candidate!=='true';empty.hidden=!(checkbox.checked&&count===0);const title=host.closest('section')?.querySelector('#word-count');if(title)title.textContent=checkbox.checked?`${count} 个推位候选 / 共 ${body.rows.length} 词`:`${body.rows.length} 个关键词`;});
+ host.replaceChildren(table,empty);return body.rows.length;
 }
