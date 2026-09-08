@@ -1,0 +1,2 @@
+# Preserve verified upstream vendor bytes, including their original whitespace.
+assets/vendor/* -whitespace
