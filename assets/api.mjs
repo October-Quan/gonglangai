@@ -26,7 +26,8 @@ export function humanError(error){
  const code=error?.code||'',msg=String(error?.message||'');
  if(/pkce_code_verifier_not_found|code verifier|flow_state_not_found|bad_code_verifier/i.test(code+' '+msg))return '此浏览器未能匹配这次登录请求。请在同一个浏览器发送并打开最新链接：若在Codex内置网页发送，请回到那里打开链接；也可全程使用Chrome重新登录。';
  if(/Auth session missing|refresh_token|session_not_found|JWT expired/i.test(code+' '+msg)||error?.status===401)return '登录已失效，请重新登录。';
- if(/rate_limit|over_email_send_rate_limit|over_request_rate_limit/i.test(code)||error?.status===429)return '操作太频繁，请稍等一分钟再试。';
+ if(code==='over_email_send_rate_limit'||/email rate limit exceeded/i.test(msg))return '邮件发送额度已用尽，请等待邮件服务额度恢复后再试；不是等待一分钟即可恢复。若持续出现，请联系管理员配置专用邮件服务。';
+ if(/rate_limit|over_request_rate_limit/i.test(code)||error?.status===429)return '请求受到服务限流，恢复时间由服务端决定，请稍后再试，避免连续点击。';
  if(/otp_expired|access_denied|expired/i.test(code+' '+msg))return '登录链接已失效，请重新发送并使用最新邮件中的链接。';
  if(/signup_disabled|Signups not allowed/i.test(code+' '+msg))return '当前账号尚未注册，请切换到注册后再试。';
  if(/email_address_invalid|validation_failed/i.test(code))return '邮箱格式不正确，请检查后再试。';
