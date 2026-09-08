@@ -17,6 +17,10 @@ async function realApi(){
   async task(id,userId){return unwrap(await client.from('gonglangai_tasks').select('*').eq('id',id).eq('user_id',userId).maybeSingle());},
   async upload(path,file){return unwrap(await client.storage.from('gonglangai-inbox').upload(path,file,{upsert:false,contentType:file.name.toLowerCase().endsWith('.csv')?'text/csv':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));},
   async insert(row){return unwrap(await client.from('gonglangai_tasks').insert(row).select('id').single());},
+  async quoteAccess(){return unwrap(await client.rpc('gonglangai_quote_access'));},
+  async quote(id){return unwrap(await client.from('gonglangai_task_quotes').select('*').eq('task_id',id).maybeSingle());},
+  async quotes(ids){return ids.length?unwrap(await client.from('gonglangai_task_quotes').select('*').in('task_id',ids)):[];},
+  async confirmTask(q,remove){return unwrap(await client.rpc('gonglangai_confirm_task',{p_task_id:q.task_id,p_quote_version:q.quote_version,p_allow_public:true,p_delete_uploaded:remove}));},
   async report(url){const u=new URL(url);if(u.protocol!=='https:'||u.hostname!==config.reportHost||!/^\/gonglangai\/reports\/[a-f0-9]{64}\.html$/.test(u.pathname)||u.search||u.hash||u.port||u.username||u.password)throw new Error('报告地址不符合本项目规则，请联系管理员核验。');const r=await fetch(u.href,{credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('报告暂时无法读取，请稍后重试。');return r.text();},
   onLogout(callback){client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT')callback();});}
  };
