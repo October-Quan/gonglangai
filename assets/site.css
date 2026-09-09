@@ -17,3 +17,8 @@
 
 /* Module 02: cached organic benchmarks. */
 .organic-panel{padding:24px;min-width:0}.organic-panel>p{color:#64748b;font-size:13px;line-height:1.7}.organic-scroll{overflow-x:auto;max-width:100%;margin-top:22px}.organic-table{width:100%;min-width:850px}.organic-table th,.organic-table td{vertical-align:top;padding:18px 16px}.organic-table th:first-child{min-width:170px}.organic-table td:nth-child(4){min-width:155px}.organic-table td:last-child{white-space:nowrap}.organic-table .thumbnail{margin-bottom:8px}@media(max-width:700px){.organic-panel{padding:16px}.organic-table th,.organic-table td{padding:14px 12px}}
+
+/* Module 03: reviewed negative candidates. */
+.negatives-panel{padding:24px;min-width:0}.negatives-panel>p{font-size:13px;color:#64748b;line-height:1.8}.negatives-panel h3{margin-top:28px}.negatives-table{min-width:920px;width:100%}.negatives-table th,.negatives-table td{padding:16px;vertical-align:top}.negatives-table th:first-child{min-width:200px}.negatives-table td:last-child{min-width:260px}.negatives-panel textarea{display:block;width:100%;box-sizing:border-box;resize:vertical;border:1px solid #dbe2ec;border-radius:8px;padding:12px;margin:12px 0;background:#f8fafc;color:#334155;font:14px/1.6 monospace}.negatives-panel button:disabled{opacity:.5;cursor:default}@media(max-width:700px){.negatives-panel{padding:16px}}
+
+.negatives-table th:nth-child(1){width:22%}.negatives-table th:nth-child(2){width:7%}.negatives-table th:nth-child(3){width:12%}.negatives-table th:nth-child(4){width:7%}.negatives-table th:nth-child(5){width:9%}.negatives-table th:nth-child(6){width:15%}.negatives-table th:nth-child(7){width:28%}.negatives-table td{overflow-wrap:anywhere}

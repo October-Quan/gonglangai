@@ -5,10 +5,14 @@ export function moduleSource(fragment){
  if(!markers.length)return null;
  if(markers.length!==1||markers[0].getAttribute('data-report-format')!=='modules-v1')throw new Error('报告模块版本无法识别，请联系管理员核验。');
  const panels=[...markers[0].querySelectorAll('[data-module-panel]')];
- if(panels.length!==6||modules.some(([id],i)=>panels[i].getAttribute('data-module-panel')!==id||!(id==='01'?['ready']:id==='02'?['ready','pending']:['pending']).includes(panels[i].getAttribute('data-module-state'))))throw new Error('报告模块结构不完整，请联系管理员核验。');
+ if(panels.length!==6||modules.some(([id],i)=>panels[i].getAttribute('data-module-panel')!==id||!(id==='01'?['ready']:['02','03'].includes(id)?['ready','pending']:['pending']).includes(panels[i].getAttribute('data-module-state'))))throw new Error('报告模块结构不完整，请联系管理员核验。');
  return panels[0];
 }
-export function mountModules(meta,panel,organic=null,thumbnail){
+export function mountModules(meta,panel,organic=null,thumbnail,negatives=null){
+ if(negatives){
+  const boxes=[...negatives.querySelectorAll('textarea[data-negative-copy]')];
+  if(boxes.length!==2||boxes[0].getAttribute('data-negative-copy')!=='exact'||boxes[1].getAttribute('data-negative-copy')!=='phrase'||[...negatives.querySelectorAll('table')].some(t=>t.querySelectorAll('thead th').length!==7||!t.tBodies.length||[...t.tBodies[0].rows].some(r=>r.cells.length!==7)))throw new Error('否定词清单结构不完整，请联系管理员核验。');
+ }
  if(organic){const table=organic.querySelector('table');if(!table||table.querySelectorAll('thead th').length!==6||!table.tBodies.length||[...table.tBodies[0].rows].some(r=>r.cells.length!==6))throw new Error('自然位标杆结构不完整，请联系管理员核验。');}
  const old=panel.closest('.diagnosis-layout');
  if(old)return;
@@ -17,7 +21,7 @@ export function mountModules(meta,panel,organic=null,thumbnail){
  meta.before(layout);
  const buttons=[],sections=[];
  for(const [id,title] of modules){
-  const ready=id==='01'||(id==='02'&&organic);
+  const ready=id==='01'||(id==='02'&&organic)||(id==='03'&&negatives);
   const button=el('button','module-button'+(ready?'':' pending'));
   button.type='button';button.setAttribute('aria-controls','diagnosis-'+id);button.setAttribute('aria-pressed',String(id==='01'));
   button.append(el('span','module-number',id),el('span','module-title',title));
@@ -31,6 +35,18 @@ export function mountModules(meta,panel,organic=null,thumbnail){
    const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','自然位标杆表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);
    block.querySelectorAll('img').forEach(img=>img.replaceWith(thumbnail(img)));
    block.querySelectorAll('details').forEach(d=>d.className='report-details');section.append(block);
+  }
+  else if(id==='03'&&negatives){
+   const block=el('section','panel negatives-panel');block.append(...[...negatives.childNodes].map(n=>n.cloneNode(true)));
+   block.querySelectorAll('table').forEach(table=>{table.className='report-table negatives-table';const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','否定词清单表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
+   block.querySelectorAll('details').forEach(d=>d.className='report-details');
+   block.querySelectorAll('textarea[data-negative-copy]').forEach(box=>{
+    box.readOnly=true;box.rows=4;
+    const button=el('button','button secondary-button','复制'+(box.getAttribute('data-negative-copy')==='exact'?'精准否定':'词组否定'));
+    button.type='button';button.disabled=!box.value.trim();box.after(button);
+    const status=el('p','secondary');status.setAttribute('role','status');button.after(status);
+    button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(box.value);status.textContent='已复制';}catch{box.focus();box.select();status.textContent='自动复制不可用，已选中文本，请手动复制。';}});
+   });section.append(block);
   }
   else{const placeholder=el('section','module-placeholder panel');placeholder.append(el('span','module-placeholder-number',id),el('h2','',title),el('p','secondary','即将上线'));section.append(placeholder);}
   button.addEventListener('click',()=>{
