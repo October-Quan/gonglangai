@@ -1,4 +1,4 @@
-import {renderReport} from './report.mjs?v=20260909-modules';
+import {renderReport} from './report.mjs?v=20260909-organic';
 const $=id=>document.getElementById(id);
 let api,page,preview,humanError,currentUser,taskOffset=0,taskTotal=0,refreshFailures=0,refreshing=false,poll,submitting=false,draft=null;
 const draftKey='gonglangai-pending-submission-v1';
