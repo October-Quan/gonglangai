@@ -1,5 +1,6 @@
 // Preserve the source report's values and order while grouping 12 data fields into 7 display columns.
 import {adFacts,parseMetric,assessOpportunity} from './opportunity.mjs';
+import {adRates} from './ad-rates.mjs?v=20260909-rates';
 const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
 function lines(cell){const clone=cell.cloneNode(true);clone.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));return clone.textContent.split('\n').map(s=>s.trim()).filter(Boolean);}
 const number=value=>/^\d+(\.\d+)?$/.test(value||'')?Number(value).toLocaleString('en-US',{maximumFractionDigits:8}):value||'待核验';
@@ -56,7 +57,9 @@ export function renderReport(html,host,meta,note,ownAsin=''){
   else{
    const primary=el('div','ad-primary');primary.append(el('strong','metric-value',number(fields['订单'])),el('span','','单'));ads.append(primary);
    const acos=el('div','acos-line');acos.append(el('span','','ACOS '),el('strong','',fields['ACOS']||'待核验'));ads.append(acos,el('div','secondary','花费 '+number(fields['花费'])+' USD'));
-   ads.append(details('广告明细',data[10]));
+   const rates=adRates(fields);
+   for(const rate of rates)ads.append(el('div','secondary ad-rate '+rate.label.toLowerCase(),`${rate.label} ${rate.display}`));
+   ads.append(details('广告明细',[...data[10],...rates.map(rate=>rate.detail),'CVR订单采用源报表7天归因订单，不代表最近7个自然日销售。','广告指标为整份报表按搜索词汇总，不能据此认定只属于页头子ASIN。']));
   }
   if(assessment.acosWithin!==null)ads.append(el('span','fact-tag '+(assessment.acosWithin?'target-pass':'target-over'),assessment.acosWithin?'ACOS ≤50% · 达标':'ACOS >50% · 超目标'));
   const ranks=el('td','rank-cell'),comparison=el('div','rank-comparison');
