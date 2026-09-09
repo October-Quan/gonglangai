@@ -3,6 +3,11 @@ import {adFacts,parseMetric,assessOpportunity} from './opportunity.mjs';
 const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
 function lines(cell){const clone=cell.cloneNode(true);clone.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));return clone.textContent.split('\n').map(s=>s.trim()).filter(Boolean);}
 const number=value=>/^\d+(\.\d+)?$/.test(value||'')?Number(value).toLocaleString('en-US',{maximumFractionDigits:8}):value||'待核验';
+export function formatClickShare(value){
+ const raw=typeof value==='string'?value.trim():'';
+ if(!/^\d+(\.\d+)?$/.test(raw)||!Number.isFinite(Number(raw))||Number(raw)>1)return '份额待核验';
+ return (Number(raw)*100).toLocaleString('en-US',{useGrouping:false,maximumFractionDigits:8})+'%';
+}
 function details(title,values,cls='report-details'){const d=el('details',cls);d.append(el('summary','',title));values.forEach(value=>d.append(el('div','',value)));return d;}
 function badge(value){return el('span','badge '+({'优先守位':'green','先看广告效率':'blue','待核验':'amber'}[value]||''),value);}
 function trend(values){
@@ -26,7 +31,11 @@ export function renderReport(html,host,meta,note,ownAsin=''){
  const fragment=window.DOMPurify.sanitize(html,{RETURN_DOM_FRAGMENT:true,ALLOWED_TAGS:['h1','p','div','table','thead','tbody','tr','th','td','br','hr','img'],ALLOWED_ATTR:['src','alt','width','height','scope'],FORBID_TAGS:['style','script','iframe','form','input','svg','math']});
  const source=fragment.querySelector('table');
  if(!source||source.querySelectorAll('thead th').length!==12||!source.tBodies.length||[...source.tBodies[0].rows].some(r=>r.cells.length!==12))throw new Error('报告结构无法识别，请联系管理员核验。');
- const paragraphs=[...fragment.querySelectorAll('p')];meta.replaceChildren(...paragraphs.slice(0,2));note.replaceChildren(...paragraphs.slice(2));
+ const paragraphs=[...fragment.querySelectorAll('p')];
+ for(const paragraph of paragraphs.slice(2)){
+  paragraph.textContent=paragraph.textContent.replace('点击份额暂展示接口原值，单位核验前不作百分比转换。','点击份额按接口原值换算为百分比；精度以原值为准，可能与后台更细精度的显示略有差异。');
+ }
+ meta.replaceChildren(...paragraphs.slice(0,2));note.replaceChildren(...paragraphs.slice(2));
  const table=el('table','report-table opportunity-table');const group=el('colgroup');
  for(const width of [190,180,230,200,170,245,345]){const col=el('col');col.style.width=width+'px';group.append(col);}table.append(group);
  const head=el('thead'),header=el('tr');for(const text of ['关键词／标签','自己的广告实绩','自己 vs 竞对自然位','搜索热度与趋势','竞争与竞价','点击前三／份额','打法判断＋建议'])header.append(el('th','',text));head.append(header);table.append(head);const body=el('tbody');table.append(body);
@@ -61,8 +70,14 @@ export function renderReport(html,host,meta,note,ownAsin=''){
   const competition=el('td','competition-cell');competition.append(el('div','metric-label','竞争难度'),el('strong','difficulty-value',number(data[4][0])));
   const bid=el('div','bid-values');data[5].forEach(value=>bid.append(el('div','',value)));competition.append(bid,el('div','secondary','币种 USD'));
   const top=el('td','top-cell'),grid=el('div','competitors');
-  for(const part of compParts){const bits=lines(part),item=el('div','competitor'),isOwn=ownAsin&&bits[0]===ownAsin;item.append(thumbnail(part.querySelector('img')),el('div','competitor-asin',bits[0]||'待核验'));if(isOwn)item.append(el('span','own-label','自己'));item.append(el('div','share-value',bits.find(t=>t.startsWith('点击份额原值'))?.replace('点击份额原值','').trim()||'份额待核验'));grid.append(item);}
-  top.append(grid,el('div','secondary share-note','点击份额为接口原值'));
+  for(const part of compParts){
+   const bits=lines(part),item=el('div','competitor'),isOwn=ownAsin&&bits[0]===ownAsin;
+   const raw=bits.find(t=>t.startsWith('点击份额原值'))?.replace('点击份额原值','').trim();
+   item.append(thumbnail(part.querySelector('img')),el('div','competitor-asin',bits[0]||'待核验'));
+   if(isOwn)item.append(el('span','own-label','自己'));
+   item.append(el('div','share-value',formatClickShare(raw)),el('div','secondary share-raw','原值 '+(raw||'待核验')));grid.append(item);
+  }
+  top.append(grid,el('div','secondary share-note','点击份额 · 精度以接口原值为准'));
   const advice=el('td','advice-cell');const title=el('div','advice-title');title.append(el('span','badge '+assessment.tone,assessment.label),el('span','secondary','按当前目标判断'));advice.append(title,el('p','advice-copy',assessment.action));
   advice.append(details('生成时建议（历史规则）',['原分类：'+category,c[11].textContent]));
   tr.append(word,ads,ranks,heat,competition,top,advice);body.append(tr);
