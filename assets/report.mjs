@@ -1,6 +1,7 @@
 // Preserve the source report's values and order while grouping 12 data fields into 7 display columns.
 import {adFacts,parseMetric,assessOpportunity} from './opportunity.mjs';
 import {adRates} from './ad-rates.mjs?v=20260909-rates';
+import {acosDisplay,sourceDateRange} from './report-display.mjs?v=20260909-display';
 const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
 function lines(cell){const clone=cell.cloneNode(true);clone.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));return clone.textContent.split('\n').map(s=>s.trim()).filter(Boolean);}
 const number=value=>/^\d+(\.\d+)?$/.test(value||'')?Number(value).toLocaleString('en-US',{maximumFractionDigits:8}):value||'待核验';
@@ -37,7 +38,16 @@ export function renderReport(html,host,meta,note,ownAsin=''){
  for(const paragraph of paragraphs.slice(2)){
   paragraph.textContent=paragraph.textContent.replace('点击份额暂展示接口原值，单位核验前不作百分比转换。','点击份额按接口原值换算为百分比；精度以原值为准，可能与后台更细精度的显示略有差异。');
  }
- meta.replaceChildren(...paragraphs.slice(0,2));note.replaceChildren(...paragraphs.slice(2));
+ const metadata=paragraphs.slice(0,2),period=metadata[1];
+ if(period){
+  const range=sourceDateRange(period.textContent);
+  if(range.valid){
+   period.textContent=range.summary;
+   metadata.push(details('查看源日期明细',['原开始日期：'+range.starts,'原结束日期：'+range.ends,'原周期说明：'+range.raw,'范围仅为源日期的最早至最晚边界，不代表每天均有完整数据。'],'report-details source-dates'));
+   if(range.note)metadata.push(el('p','secondary',range.note));
+  }else metadata.push(el('p','secondary','日期范围待核验；保留原周期文本。'));
+ }
+ meta.replaceChildren(...metadata);note.replaceChildren(...paragraphs.slice(2));
  const table=el('table','report-table opportunity-table');const group=el('colgroup');
  for(const width of [190,180,230,200,170,245,345]){const col=el('col');col.style.width=width+'px';group.append(col);}table.append(group);
  const head=el('thead'),header=el('tr');for(const text of ['关键词／标签','自己的广告实绩','自己 vs 竞对自然位','搜索热度与趋势','竞争与竞价','点击前三／份额','打法判断＋建议'])header.append(el('th','',text));head.append(header);table.append(head);const body=el('tbody');table.append(body);
@@ -57,10 +67,13 @@ export function renderReport(html,host,meta,note,ownAsin=''){
   if(c[10].textContent.includes('无投放'))ads.append(el('strong','metric-empty','无投放'),el('div','secondary','仅本报表周期'));
   else{
    const primary=el('div','ad-primary');primary.append(el('strong','metric-value',number(fields['订单'])),el('span','','单'));ads.append(primary);
-   const acos=el('div','acos-line');acos.append(el('span','','ACOS '),el('strong','',fields['ACOS']||'待核验'));ads.append(acos,el('div','secondary','花费 '+number(fields['花费'])+' USD'));
+   const displayedAcos=acosDisplay(fields);
+   const acos=el('div','acos-line');acos.append(el('span','','ACOS '),el('strong','',displayedAcos.display));ads.append(acos);
+   if(displayedAcos.reason)ads.append(el('div','secondary acos-reason',displayedAcos.reason));
+   ads.append(el('div','secondary','花费 '+number(fields['花费'])+' USD'));
    const rates=adRates(fields);
    for(const rate of rates)ads.append(el('div','secondary ad-rate '+rate.label.toLowerCase(),`${rate.label} ${rate.display}`));
-   ads.append(details('广告明细',[...data[10],...rates.map(rate=>rate.detail),'CVR订单采用源报表7天归因订单，不代表最近7个自然日销售。','广告指标为整份报表按搜索词汇总，不能据此认定只属于页头子ASIN。']));
+   ads.append(details('广告明细',[...data[10].map(value=>value.startsWith('ACOS：')?'源报告'+value:value),...(displayedAcos.detail?[displayedAcos.detail]:[]),...rates.map(rate=>rate.detail),'CVR订单采用源报表7天归因订单，不代表最近7个自然日销售。','广告指标为整份报表按搜索词汇总，不能据此认定只属于页头子ASIN。']));
   }
   if(assessment.acosWithin!==null)ads.append(el('span','fact-tag '+(assessment.acosWithin?'target-pass':'target-over'),assessment.acosWithin?'ACOS ≤50% · 达标':'ACOS >50% · 超目标'));
   const ranks=el('td','rank-cell'),comparison=el('div','rank-comparison');
