@@ -33,6 +33,7 @@ export function renderReport(html,host,meta,note,ownAsin=''){
  const source=fragment.querySelector('table');
  if(!source||source.querySelectorAll('thead th').length!==12||!source.tBodies.length||[...source.tBodies[0].rows].some(r=>r.cells.length!==12))throw new Error('报告结构无法识别，请联系管理员核验。');
  const paragraphs=[...fragment.querySelectorAll('p')];
+ const versionedReport=paragraphs[0]?.textContent.startsWith('规则版本：targets-v1；');
  for(const paragraph of paragraphs.slice(2)){
   paragraph.textContent=paragraph.textContent.replace('点击份额暂展示接口原值，单位核验前不作百分比转换。','点击份额按接口原值换算为百分比；精度以原值为准，可能与后台更细精度的显示略有差异。');
  }
@@ -82,7 +83,7 @@ export function renderReport(html,host,meta,note,ownAsin=''){
   }
   top.append(grid,el('div','secondary share-note','点击份额 · 精度以接口原值为准'));
   const advice=el('td','advice-cell');const title=el('div','advice-title');title.append(el('span','badge '+assessment.tone,assessment.label),el('span','secondary','按当前目标判断'));advice.append(title,el('p','advice-copy',assessment.action));
-  advice.append(details('生成时建议（历史规则）',['原分类：'+category,c[11].textContent]));
+  advice.append(details(versionedReport?'生成时判断与补充（targets-v1）':'生成时建议（历史规则）',[(versionedReport?'分组依据：':'原分类：')+category,c[11].textContent]));
   tr.append(word,ads,ranks,heat,competition,top,advice);body.append(tr);
  }
  const count=[...body.rows].filter(row=>row.dataset.candidate==='true').length;
