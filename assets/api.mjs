@@ -29,6 +29,8 @@ async function realApi(){
   async confirmCompetitorQuote(id,version,stage){return unwrap(await client.rpc('gonglangai_confirm_competitor_quote',{p_task:id,p_version:version,p_stage:stage,p_public:true}));},
   async reviewCompetitors(id,proposal,items){return unwrap(await client.rpc('gonglangai_review_competitors',{p_task:id,p_raw_sha:proposal.raw_sha256,p_binding_sha:proposal.binding_sha256,p_items:items}));},
   async imageRun(id){return unwrap(await client.from('gonglangai_image_runs').select('*').eq('task_id',id).maybeSingle());},
+  async imagePilot(id){const r=await client.from('gonglangai_image_pilots').select('*').eq('task_id',id).maybeSingle();if(r.error&&['PGRST205','42P01'].includes(r.error.code))return null;return unwrap(r);},
+  async confirmImagePilot(id,version){return unwrap(await client.rpc('gonglangai_confirm_image_pilot',{p_task:id,p_version:version,p_confirm:true}));},
   async imageRuns(ids){if(!ids.length)return [];const r=await client.from('gonglangai_image_runs').select('task_id,state,stage,report_url').in('task_id',ids);if(r.error&&['PGRST205','42P01'].includes(r.error.code))return [];return unwrap(r);},
   async confirmImageQuote(id,version,stage){return unwrap(await client.rpc('gonglangai_confirm_image_quote',{p_task:id,p_version:version,p_stage:stage,p_public:true}));},
   async reviewImages(id,stage,sha){return unwrap(await client.rpc('gonglangai_review_images',{p_task:id,p_stage:stage,p_result_sha:sha}));},
