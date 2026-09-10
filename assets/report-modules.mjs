@@ -22,7 +22,8 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
  }
  if(organic){const table=organic.querySelector('table');if(!table||table.querySelectorAll('thead th').length!==6||!table.tBodies.length||[...table.tBodies[0].rows].some(r=>r.cells.length!==6))throw new Error('自然位标杆结构不完整，请联系管理员核验。');}
  if(images){
-  for(const t of images.querySelectorAll('table'))if(t.getAttribute('data-image-table')!=='matrix'||![3,4].includes(t.querySelectorAll('thead th').length)||t.tBodies[0]?.rows.length!==6||[...t.tBodies[0].rows].some(r=>r.cells.length!==t.querySelectorAll('thead th').length))throw new Error('图片证据矩阵结构不完整');
+  const expectedRows=images.textContent.includes('image-checklist-apparel-scene-v1')?5:6;
+  for(const t of images.querySelectorAll('table'))if(t.getAttribute('data-image-table')!=='matrix'||![3,4].includes(t.querySelectorAll('thead th').length)||t.tBodies[0]?.rows.length!==expectedRows||[...t.tBodies[0].rows].some(r=>r.cells.length!==t.querySelectorAll('thead th').length))throw new Error('图片证据矩阵结构不完整');
  }
  const old=panel.closest('.diagnosis-layout');
  if(old)return;
