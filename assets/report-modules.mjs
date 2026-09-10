@@ -12,7 +12,9 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
  if(competitors){
   const tables=[...competitors.querySelectorAll('table')];
   const partial=competitors.querySelector('[data-competitor-partial="true"]');
-  if(tables.length!==(partial?1:2)||tables[0].querySelectorAll('thead th').length!==10||!tables[0].tBodies[0]||tables[0].tBodies[0].rows.length<4||tables[0].tBodies[0].rows.length>6||tables.some((t,i)=>!t.tBodies[0]||[...t.tBodies[0].rows].some(r=>r.cells.length!==(i===0?10:tables[0].tBodies[0].rows.length+2)))||(!partial&&tables[1].querySelectorAll('thead th').length!==tables[0].tBodies[0].rows.length+2))throw new Error('竞对对比表结构不完整，请联系管理员核验。');
+  const qualitative=[...competitors.querySelectorAll('[data-competitor-qualitative="true"]')];
+  if(qualitative.length>1||(qualitative.length&&(!partial||qualitative[0].querySelectorAll('table').length!==1||qualitative[0].querySelector('table')!==tables[1])))throw new Error('定性补充表结构不完整，请联系管理员核验。');
+  if(tables.length!==(partial&&!qualitative.length?1:2)||tables[0].querySelectorAll('thead th').length!==10||!tables[0].tBodies[0]||tables[0].tBodies[0].rows.length<4||tables[0].tBodies[0].rows.length>6||tables.some((t,i)=>!t.tBodies[0]||[...t.tBodies[0].rows].some(r=>r.cells.length!==(i===0?10:tables[0].tBodies[0].rows.length+2)))||((!partial||qualitative.length)&&tables[1].querySelectorAll('thead th').length!==tables[0].tBodies[0].rows.length+2))throw new Error('竞对对比表结构不完整，请联系管理员核验。');
  }
  if(negatives){
   const boxes=[...negatives.querySelectorAll('textarea[data-negative-copy]')];

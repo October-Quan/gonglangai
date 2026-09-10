@@ -1,4 +1,4 @@
-import {renderReport} from './report.mjs?v=20260910-images';
+import {renderReport} from './report.mjs?v=20260910-qualitative';
 import {mountCompetitorTool,competitorStates} from './competitor-tool.mjs?v=20260910-images';
 import {mountImageTool} from './image-tool.mjs?v=20260910-image-retry';
 let competitorUI=null,imageUI=null;
@@ -112,7 +112,7 @@ async function report(){
  const imageView=new URLSearchParams(location.search).get('view')==='images',ir=imageView?await api.imageRun(task.id):null;
  const reportURL=imageView?ir?.report_url:task.report_url;
  if((!imageView&&task.status!=='已完成')||!reportURL){message('report-message',task.status==='失败'?'任务失败：'+(task.failure_reason||'请返回任务列表查看原因。'):'任务尚未完成，请返回工具页查看处理状态。',task.status==='失败');$('report-loading').hidden=true;return;}
- const html=await api.report(reportURL);const count=renderReport(html,$('report-content'),$('report-meta'),$('report-note'),task.asin);$('word-count').textContent=`${count} 个关键词`;$('report-loading').hidden=true;$('report-panel').hidden=false;if(imageView)document.querySelector('[aria-controls="diagnosis-05"]')?.click();
+ const html=await api.report(reportURL);const count=renderReport(html,$('report-content'),$('report-meta'),$('report-note'),task.asin);$('word-count').textContent=`${count} 个关键词`;$('report-loading').hidden=true;$('report-panel').hidden=false;if(imageView){const section=new URLSearchParams(location.search).get('module')==='04'?'04':'05';document.querySelector('[aria-controls="diagnosis-'+section+'"]')?.click();}
 }
 try{
  ({api,page,preview,humanError}=await import('./api.mjs?v=20260910-images'));
