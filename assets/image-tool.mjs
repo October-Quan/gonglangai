@@ -10,7 +10,7 @@ export function mountImageTool({api,page,humanError,refresh}){
   const [r,pilot]=await Promise.all([api.imageRun(task.id),api.imagePilot?.(task.id)]);if(active?.id!==task.id||!r)return;
   const sig=JSON.stringify([r,pilot]);if(sig===signature&&!card.hidden)return;signature=sig;card.hidden=false;
   card.replaceChildren(node('h3','',task.asin+' · 图片诊断 · '+names[r.stage]));
-  card.append(node('p','help','使用已确认的6条购买标准和现有图片缓存；缺少差评与品类特征不阻塞。原竞对任务状态与账本保留。每步确认只运行本步，不会连续扣费。'));
+  card.append(node('p','help','使用本任务已确认的购买标准和现有图片缓存；缺少差评与品类特征不阻塞。原竞对任务状态与账本保留。每步确认只运行本步，不会连续扣费。'));
   if(r.report_url){const link=node('a','button quiet',r.state==='complete'||(r.state==='awaiting_review'&&!needsReview(r))?'查看本步图片诊断报告 →':'查看此前已发布报告 →'),url=new URL(page('report/'));url.searchParams.set('task',task.id);url.searchParams.set('view','images');link.href=url.href;link.target='_blank';link.rel='noopener';card.append(link);}
   async function act(fn){if(busy||failures>=2)return;busy=true;card.querySelectorAll('button').forEach(n=>n.disabled=true);try{await fn();failures=0;signature='';}catch(e){failures++;card.append(node('p','message error',humanError(e)+(failures>=2?' 已停止重复操作，请核验状态。':'')));}finally{busy=false;}if(!failures){await refresh();await open(task);}}
   function consent(text,buttonText,fn){const label=node('label','consent'),check=node('input');check.type='checkbox';label.append(check,node('span','',text));const button=node('button','button primary',buttonText);button.type='button';button.disabled=true;check.addEventListener('change',()=>button.disabled=!check.checked||busy||failures>=2);button.addEventListener('click',()=>{if(check.checked)act(fn);});card.append(label,button);}
