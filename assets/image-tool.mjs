@@ -14,7 +14,10 @@ export function mountImageTool({api,page,humanError,refresh}){
   function consent(text,buttonText,fn){const label=node('label','consent'),check=node('input');check.type='checkbox';label.append(check,node('span','',text));const button=node('button','button primary',buttonText);button.type='button';button.disabled=true;check.addEventListener('change',()=>button.disabled=!check.checked||busy||failures>=2);button.addEventListener('click',()=>{if(check.checked)act(fn);});card.append(label,button);}
   if(r.state==='quoted'&&r.quote){const q=r.quote;
    if(q.retry_attempt===1)card.append(node('p','message','第1次请求返回 HTTP 400，未生成本步结果；以下是独立的第1次排错重试报价。首次账本保留、实扣待核对。本次仍只运行1次，失败后停止。'));
-   card.append(node('p','',`本步1次 DeepSeek 请求，${q.image_count} 次图片输入，最多预留 ¥${Number(q.deepseek_limit_yuan).toFixed(6)}。`),node('p','help','Sorftime与西柚新增调用0。按高峰输入3元/百万、输出9元/百万tokens保守预留，实际依用量计费。失败保留原始结果，不自动重试。'),node('p','help','报告以随机公开链接发布，OSS本次预计低于¥0.01，持续存储和访问另计；没有新上传原件可清理，旧文件保留。'),node('p','help','额度有效至 '+new Date(q.expires_at).toLocaleString('zh-CN')));
+   const inline=q.transport==='inline-original-jpeg-v1';
+   if(inline)card.append(node('p','help','本次直接传送已校验的原图数据，图片内容与编号不变。旧视觉模型名称由服务商当前 Flash 模型承接。'));
+   const price=inline?'Sorftime与西柚新增调用0。按当前高峰输入2元/百万、输出8元/百万tokens及每图最多1024tokens保守预留，不计缓存优惠；实际依用量计费。失败保留原始结果，不自动重试。':'Sorftime与西柚新增调用0。此报价按原记录输入3元/百万、输出9元/百万tokens预留；实际价格以服务商账单为准。失败保留原始结果，不自动重试。';
+   card.append(node('p','',`本步1次 DeepSeek 请求，${q.image_count} 次图片输入，最多预留 ¥${Number(q.deepseek_limit_yuan).toFixed(6)}。`),node('p','help',price),node('p','help','报告以随机公开链接发布，OSS本次预计低于¥0.01，持续存储和访问另计；没有新上传原件可清理，旧文件保留。'),node('p','help','额度有效至 '+new Date(q.expires_at).toLocaleString('zh-CN')));
    if(q.confirmed_at)card.append(node('p','message','本账号已确认，等待后台执行本步。'));
    else consent('我确认本步图片范围与额度，并同意通过随机公开链接提供报告。','确认本步额度并开始',()=>{if(Date.parse(q.expires_at)<=Date.now())throw new Error('额度已过期，请刷新');return api.confirmImageQuote(task.id,q.quote_version,q.stage);});
   }else if(r.state==='awaiting_review'){
