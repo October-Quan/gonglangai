@@ -1,6 +1,6 @@
 import {renderReport} from './report.mjs?v=20260910-images';
 import {mountCompetitorTool,competitorStates} from './competitor-tool.mjs?v=20260910-images';
-import {mountImageTool} from './image-tool.mjs?v=20260910-images';
+import {mountImageTool} from './image-tool.mjs?v=20260910-image-retry';
 let competitorUI=null,imageUI=null;
 const $=id=>document.getElementById(id);
 let api,page,preview,humanError,currentUser,taskOffset=0,taskTotal=0,refreshFailures=0,refreshing=false,poll,submitting=false,draft=null;
