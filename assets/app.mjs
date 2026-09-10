@@ -1,6 +1,7 @@
-import {renderReport} from './report.mjs?v=20260910-competitors';
-import {mountCompetitorTool,competitorStates} from './competitor-tool.mjs?v=20260910-competitors';
-let competitorUI=null;
+import {renderReport} from './report.mjs?v=20260910-images';
+import {mountCompetitorTool,competitorStates} from './competitor-tool.mjs?v=20260910-images';
+import {mountImageTool} from './image-tool.mjs?v=20260910-images';
+let competitorUI=null,imageUI=null;
 const $=id=>document.getElementById(id);
 let api,page,preview,humanError,currentUser,taskOffset=0,taskTotal=0,refreshFailures=0,refreshing=false,poll,submitting=false,draft=null;
 const draftKey='gonglangai-pending-submission-v1';
@@ -44,16 +45,17 @@ function validateAsin(){const input=$('asin');input.value=input.value.trim().toU
 function validateFile(){const file=$('file').files[0];let error='';if(!file)error='请选择广告报表。';else if(!/\.(xlsx|csv)$/i.test(file.name))error='仅支持 .xlsx 或 .csv 文件。';else if(file.size===0)error='文件为空，请重新选择。';else if(file.size>20*1024*1024)error='文件超过20 MiB，请选择较小的报表。';$('file').setAttribute('aria-invalid',String(Boolean(error)));message('file-error',error,!!error);return !error;}
 async function refreshTasks(manual=false){
  if(refreshing)return;if(refreshFailures>=2&&!manual)return;refreshing=true;$('refresh').disabled=true;
- try{const {rows,total}=await api.tasks(currentUser.id,taskOffset);const quotes=new Map((await api.quotes(rows.filter(x=>x.status==='待处理'&&x.analysis_kind!=='competitors').map(x=>x.id))).map(q=>[q.task_id,q]));const competitorRuns=new Map((competitorUI?await api.competitorRuns(rows.filter(x=>x.analysis_kind==='competitors').map(x=>x.id)):[]).map(r=>[r.task_id,r]));taskTotal=total||0;$('tasks').replaceChildren();
+ try{const {rows,total}=await api.tasks(currentUser.id,taskOffset);const quotes=new Map((await api.quotes(rows.filter(x=>x.status==='待处理'&&x.analysis_kind!=='competitors').map(x=>x.id))).map(q=>[q.task_id,q]));const competitorRuns=new Map((competitorUI?await api.competitorRuns(rows.filter(x=>x.analysis_kind==='competitors').map(x=>x.id)):[]).map(r=>[r.task_id,r]));const imageRuns=new Map((api.imageRuns?await api.imageRuns(rows.filter(x=>x.analysis_kind==='competitors').map(x=>x.id)):[]).map(r=>[r.task_id,r]));taskTotal=total||0;$('tasks').replaceChildren();
   for(const item of rows){const row=document.createElement('tr');for(const [i,value] of [date(item.created_at),item.asin,item.status,item.failure_reason||''].entries()){const td=document.createElement('td');if(i===2)td.append(statusBadge(value));else{td.textContent=value||'—';if(i===1)td.className='asin';if(i===3)td.className='reason';}row.append(td);}const action=document.createElement('td');
    if(item.status==='已完成'&&item.report_url){const link=document.createElement('a');const url=new URL(page('report/'));url.searchParams.set('task',item.id);link.href=url.href;link.textContent='查看报告 →';action.append(link);}
    else if(item.analysis_kind==='competitors'&&competitorUI){const run=competitorRuns.get(item.id);row.children[2].replaceChildren(statusBadge(competitorStates[run?.state]||item.status));const btn=document.createElement('button');btn.type='button';btn.className='button quiet';btn.textContent='查看竞对分析 →';btn.addEventListener('click',()=>competitorUI.open(item,true).catch(e=>message('list-message',humanError(e),true)));action.append(btn);}
    else if(item.status==='待处理'&&quoteAccess){const q=quotes.get(item.id);row.children[2].replaceChildren(statusBadge(q?.confirmed_at?'已确认 · 排队中':q?'待确认额度':'核验报表中'));const btn=document.createElement('button');btn.type='button';btn.className='button quiet';btn.textContent=q?.confirmed_at?'查看额度':'确认额度 →';btn.addEventListener('click',()=>showQuote(item,true).catch(e=>message('cost-message',humanError(e),true)));action.append(btn);}
-   else action.textContent=item.status==='进行中'?'处理中':item.status==='待处理'?'尚未开通自动处理':'—';row.append(action);$('tasks').append(row);
+   else action.textContent=item.status==='进行中'?'处理中':item.status==='待处理'?'尚未开通自动处理':'—';if(imageUI&&imageRuns.has(item.id)){const btn=document.createElement('button');btn.type='button';btn.className='button quiet';btn.textContent='图片诊断／额度 →';btn.addEventListener('click',()=>imageUI.open(item,true).catch(e=>message('list-message',humanError(e),true)));action.append(btn);}row.append(action);$('tasks').append(row);
   }
   $('empty').hidden=rows.length>0;$('task-count').textContent=`共 ${taskTotal} 个任务`;$('page-number').textContent=`第 ${Math.floor(taskOffset/8)+1} 页`;$('previous').disabled=taskOffset===0;$('next').disabled=taskOffset+8>=taskTotal;
   $('updated').textContent='更新于 '+new Intl.DateTimeFormat('zh-CN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());message('list-message','');refreshFailures=0;
   if(competitorUI)await competitorUI.refresh();
+  if(imageUI)await imageUI.refresh();
   if(quoteTask&&!$('cost-card').hidden){const active=rows.find(x=>x.id===quoteTask.id)||await api.task(quoteTask.id,currentUser.id);if(active)await showQuote(active);}
  }catch(error){refreshFailures++;message('list-message',humanError(error)+(refreshFailures>=2?' 已暂停自动刷新，请检查网络后手动刷新。':''),true);}finally{refreshing=false;$('refresh').disabled=false;}
 }
@@ -81,6 +83,7 @@ async function submitTask(event){
  }finally{submitting=false;if(!draft)lockForm(false);$('submit').disabled=!!draft&&draft.attempts>=2;}
 }
 async function tool(){
+ if(api.imageRun)imageUI=mountImageTool({api,page,humanError,refresh:()=>refreshTasks(true)});
  quoteAccess=await api.quoteAccess();
  competitorUI=await mountCompetitorTool({api,user:currentUser,refresh:()=>refreshTasks(true),humanError});
  $('confirm-cost').addEventListener('click',confirmCost);
@@ -106,11 +109,13 @@ async function report(){
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id||'')){message('report-message','报告地址缺少有效的任务号，请返回工具页选择报告。',true);$('report-loading').hidden=true;return;}
  const task=await api.task(id,currentUser.id);if(!task){message('report-message','任务不存在，或当前账号没有查看权限。',true);$('report-loading').hidden=true;return;}
  $('report-asin').textContent=task.asin;
- if(task.status!=='已完成'||!task.report_url){message('report-message',task.status==='失败'?'任务失败：'+(task.failure_reason||'请返回任务列表查看原因。'):'任务尚未完成，请返回工具页查看处理状态。',task.status==='失败');$('report-loading').hidden=true;return;}
- const html=await api.report(task.report_url);const count=renderReport(html,$('report-content'),$('report-meta'),$('report-note'),task.asin);$('word-count').textContent=`${count} 个关键词`;$('report-loading').hidden=true;$('report-panel').hidden=false;
+ const imageView=new URLSearchParams(location.search).get('view')==='images',ir=imageView?await api.imageRun(task.id):null;
+ const reportURL=imageView?ir?.report_url:task.report_url;
+ if((!imageView&&task.status!=='已完成')||!reportURL){message('report-message',task.status==='失败'?'任务失败：'+(task.failure_reason||'请返回任务列表查看原因。'):'任务尚未完成，请返回工具页查看处理状态。',task.status==='失败');$('report-loading').hidden=true;return;}
+ const html=await api.report(reportURL);const count=renderReport(html,$('report-content'),$('report-meta'),$('report-note'),task.asin);$('word-count').textContent=`${count} 个关键词`;$('report-loading').hidden=true;$('report-panel').hidden=false;if(imageView)document.querySelector('[aria-controls="diagnosis-05"]')?.click();
 }
 try{
- ({api,page,preview,humanError}=await import('./api.mjs'));
+ ({api,page,preview,humanError}=await import('./api.mjs?v=20260910-images'));
  const kind=document.body.dataset.page;
  if(preview){$('preview-banner').hidden=false;for(const anchor of document.querySelectorAll('[data-preview-page]'))anchor.href=page(anchor.dataset.previewPage);}
  for(const anchor of document.querySelectorAll('[data-page-link]'))anchor.href=page(anchor.dataset.pageLink);

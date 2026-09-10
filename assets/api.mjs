@@ -28,6 +28,10 @@ async function realApi(){
   async createCompetitorTask(draft){return unwrap(await client.rpc('gonglangai_create_competitor_task',{p_id:draft.id,p_source:draft.source_task_id,p_asins:draft.competitor_asins,p_keyword:draft.core_keyword}));},
   async confirmCompetitorQuote(id,version,stage){return unwrap(await client.rpc('gonglangai_confirm_competitor_quote',{p_task:id,p_version:version,p_stage:stage,p_public:true}));},
   async reviewCompetitors(id,proposal,items){return unwrap(await client.rpc('gonglangai_review_competitors',{p_task:id,p_raw_sha:proposal.raw_sha256,p_binding_sha:proposal.binding_sha256,p_items:items}));},
+  async imageRun(id){return unwrap(await client.from('gonglangai_image_runs').select('*').eq('task_id',id).maybeSingle());},
+  async imageRuns(ids){if(!ids.length)return [];const r=await client.from('gonglangai_image_runs').select('task_id,state,stage,report_url').in('task_id',ids);if(r.error&&['PGRST205','42P01'].includes(r.error.code))return [];return unwrap(r);},
+  async confirmImageQuote(id,version,stage){return unwrap(await client.rpc('gonglangai_confirm_image_quote',{p_task:id,p_version:version,p_stage:stage,p_public:true}));},
+  async reviewImages(id,stage,sha){return unwrap(await client.rpc('gonglangai_review_images',{p_task:id,p_stage:stage,p_result_sha:sha}));},
   async report(url){const u=new URL(url);if(u.protocol!=='https:'||u.hostname!==config.reportHost||!/^\/gonglangai\/reports\/[a-f0-9]{64}\.html$/.test(u.pathname)||u.search||u.hash||u.port||u.username||u.password)throw new Error('报告地址不符合本项目规则，请联系管理员核验。');const r=await fetch(u.href,{credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('报告暂时无法读取，请稍后重试。');return r.text();},
   onLogout(callback){client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT')callback();});}
  };
