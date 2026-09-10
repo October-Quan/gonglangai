@@ -5,10 +5,14 @@ export function moduleSource(fragment){
  if(!markers.length)return null;
  if(markers.length!==1||markers[0].getAttribute('data-report-format')!=='modules-v1')throw new Error('报告模块版本无法识别，请联系管理员核验。');
  const panels=[...markers[0].querySelectorAll('[data-module-panel]')];
- if(panels.length!==6||modules.some(([id],i)=>panels[i].getAttribute('data-module-panel')!==id||!(id==='01'?['ready']:['02','03'].includes(id)?['ready','pending']:['pending']).includes(panels[i].getAttribute('data-module-state'))))throw new Error('报告模块结构不完整，请联系管理员核验。');
+ if(panels.length!==6||modules.some(([id],i)=>panels[i].getAttribute('data-module-panel')!==id||!(id==='01'?['ready']:['02','03','04'].includes(id)?['ready','pending']:['pending']).includes(panels[i].getAttribute('data-module-state'))))throw new Error('报告模块结构不完整，请联系管理员核验。');
  return panels[0];
 }
-export function mountModules(meta,panel,organic=null,thumbnail,negatives=null){
+export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,competitors=null){
+ if(competitors){
+  const tables=[...competitors.querySelectorAll('table')];
+  if(tables.length!==2||tables[0].querySelectorAll('thead th').length!==10||!tables[0].tBodies[0]||tables[0].tBodies[0].rows.length<4||tables[0].tBodies[0].rows.length>6||tables.some((t,i)=>!t.tBodies[0]||[...t.tBodies[0].rows].some(r=>r.cells.length!==(i===0?10:tables[0].tBodies[0].rows.length+2)))||tables[1].querySelectorAll('thead th').length!==tables[0].tBodies[0].rows.length+2)throw new Error('竞对对比表结构不完整，请联系管理员核验。');
+ }
  if(negatives){
   const boxes=[...negatives.querySelectorAll('textarea[data-negative-copy]')];
   if(boxes.length!==2||boxes[0].getAttribute('data-negative-copy')!=='exact'||boxes[1].getAttribute('data-negative-copy')!=='phrase'||[...negatives.querySelectorAll('table')].some(t=>t.querySelectorAll('thead th').length!==7||!t.tBodies.length||[...t.tBodies[0].rows].some(r=>r.cells.length!==7)))throw new Error('否定词清单结构不完整，请联系管理员核验。');
@@ -21,7 +25,7 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null){
  meta.before(layout);
  const buttons=[],sections=[];
  for(const [id,title] of modules){
-  const ready=id==='01'||(id==='02'&&organic)||(id==='03'&&negatives);
+  const ready=id==='01'||(id==='02'&&organic)||(id==='03'&&negatives)||(id==='04'&&competitors);
   const button=el('button','module-button'+(ready?'':' pending'));
   button.type='button';button.setAttribute('aria-controls','diagnosis-'+id);button.setAttribute('aria-pressed',String(id==='01'));
   button.append(el('span','module-number',id),el('span','module-title',title));
@@ -47,6 +51,12 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null){
     const status=el('p','secondary');status.setAttribute('role','status');button.after(status);
     button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(box.value);status.textContent='已复制';}catch{box.focus();box.select();status.textContent='自动复制不可用，已选中文本，请手动复制。';}});
    });section.append(block);
+  }
+  else if(id==='04'&&competitors){
+   const block=el('section','panel competitors-panel');block.append(...[...competitors.childNodes].map(n=>n.cloneNode(true)));
+   block.querySelectorAll('table').forEach(table=>{table.className='report-table competitors-table';const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','竞对对比表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
+   block.querySelectorAll('img').forEach(img=>img.replaceWith(thumbnail(img)));
+   block.querySelectorAll('details').forEach(d=>d.className='report-details');section.append(block);
   }
   else{const placeholder=el('section','module-placeholder panel');placeholder.append(el('span','module-placeholder-number',id),el('h2','',title),el('p','secondary','即将上线'));section.append(placeholder);}
   button.addEventListener('click',()=>{

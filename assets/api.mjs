@@ -13,7 +13,7 @@ async function realApi(){
   async loginUser(){return completeEmailLogin(client);},
   async loginLink(email,register){return unwrap(await client.auth.signInWithOtp({email,options:{shouldCreateUser:register,emailRedirectTo:page('')}}));},
   async logout(){unwrap(await client.auth.signOut({scope:'local'}));},
-  async tasks(userId,offset=0){const r=await client.from('gonglangai_tasks').select('id,asin,status,created_at,failure_reason,report_url',{count:'exact'}).eq('user_id',userId).order('created_at',{ascending:false}).range(offset,offset+7);if(r.error)throw r.error;return {rows:r.data,total:r.count};},
+  async tasks(userId,offset=0){const r=await client.from('gonglangai_tasks').select('id,asin,status,created_at,failure_reason,report_url,analysis_kind',{count:'exact'}).eq('user_id',userId).order('created_at',{ascending:false}).range(offset,offset+7);if(r.error)throw r.error;return {rows:r.data,total:r.count};},
   async task(id,userId){return unwrap(await client.from('gonglangai_tasks').select('*').eq('id',id).eq('user_id',userId).maybeSingle());},
   async upload(path,file){return unwrap(await client.storage.from('gonglangai-inbox').upload(path,file,{upsert:false,contentType:file.name.toLowerCase().endsWith('.csv')?'text/csv':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));},
   async insert(row){return unwrap(await client.from('gonglangai_tasks').insert(row).select('id').single());},
@@ -21,6 +21,13 @@ async function realApi(){
   async quote(id){return unwrap(await client.from('gonglangai_task_quotes').select('*').eq('task_id',id).maybeSingle());},
   async quotes(ids){return ids.length?unwrap(await client.from('gonglangai_task_quotes').select('*').in('task_id',ids)):[];},
   async confirmTask(q,remove){return unwrap(await client.rpc('gonglangai_confirm_task',{p_task_id:q.task_id,p_quote_version:q.quote_version,p_allow_public:true,p_delete_uploaded:remove}));},
+  async competitorAccess(){const r=await client.rpc('gonglangai_competitor_access');if(r.error&&['PGRST202','42883'].includes(r.error.code))return false;return unwrap(r);},
+  async competitorSources(userId){return unwrap(await client.from('gonglangai_tasks').select('id,asin,created_at').eq('user_id',userId).eq('status','已完成').eq('analysis_kind','keywords').order('created_at',{ascending:false}).limit(100));},
+  async competitorRuns(ids){return ids.length?unwrap(await client.from('gonglangai_competitor_runs').select('task_id,state').in('task_id',ids)):[];},
+  async competitorRun(id){return unwrap(await client.from('gonglangai_competitor_runs').select('*').eq('task_id',id).maybeSingle());},
+  async createCompetitorTask(draft){return unwrap(await client.rpc('gonglangai_create_competitor_task',{p_id:draft.id,p_source:draft.source_task_id,p_asins:draft.competitor_asins,p_keyword:draft.core_keyword}));},
+  async confirmCompetitorQuote(id,version,stage){return unwrap(await client.rpc('gonglangai_confirm_competitor_quote',{p_task:id,p_version:version,p_stage:stage,p_public:true}));},
+  async reviewCompetitors(id,proposal,items){return unwrap(await client.rpc('gonglangai_review_competitors',{p_task:id,p_raw_sha:proposal.raw_sha256,p_binding_sha:proposal.binding_sha256,p_items:items}));},
   async report(url){const u=new URL(url);if(u.protocol!=='https:'||u.hostname!==config.reportHost||!/^\/gonglangai\/reports\/[a-f0-9]{64}\.html$/.test(u.pathname)||u.search||u.hash||u.port||u.username||u.password)throw new Error('报告地址不符合本项目规则，请联系管理员核验。');const r=await fetch(u.href,{credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('报告暂时无法读取，请稍后重试。');return r.text();},
   onLogout(callback){client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT')callback();});}
  };
