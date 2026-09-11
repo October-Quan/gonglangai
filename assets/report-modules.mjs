@@ -1,6 +1,7 @@
-import {enhanceOrganic,enhanceCompetitors,enhanceImages,enhanceFullImages} from './report-ui.mjs?v=20260911-image-evidence';
+import {enhanceShareBenchmarks,enhanceNegativeProducts} from './report-growth.mjs?v=20260911-apparel';
+import {enhanceOrganic,enhanceCompetitors,enhanceImages,enhanceFullImages} from './report-ui.mjs?v=20260911-apparel';
 import {condenseRules,foldLongTables,condenseModuleDates} from './report-reading.mjs?v=20260911-reading';
-const modules=[['01','关键词作战总表'],['02','自然位标杆'],['03','否定词清单'],['04','竞对对比'],['05','图片与卖点诊断'],['06','广告诊断与优化']];
+const modules=[['01','关键词增长总表'],['02','关键词份额与标杆'],['03','否定词清单'],['04','竞对对比'],['05','图片与卖点诊断'],['06','广告诊断与优化']];
 const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text)n.textContent=text;return n;};
 export function moduleSource(fragment){
  const markers=fragment.querySelectorAll('[data-report-format]');
@@ -10,7 +11,7 @@ export function moduleSource(fragment){
  if(panels.length!==6||modules.some(([id],i)=>panels[i].getAttribute('data-module-panel')!==id||!(id==='01'?['ready']:['ready','pending']).includes(panels[i].getAttribute('data-module-state'))))throw new Error('报告模块结构不完整，请联系管理员核验。');
  return panels[0];
 }
-export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,competitors=null,images=null,adPlan=null){
+export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,competitors=null,images=null,adPlan=null,keywordData=new Map()){
  if(adPlan){
   checkMappingPresentation(adPlan);
   const tables=[...adPlan.querySelectorAll('table')];
@@ -53,8 +54,8 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
    enhanceOrganic(block,competitors);
    const table=block.querySelector('table');table.className='report-table organic-table';
    const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','自然位标杆表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);
-   block.querySelectorAll('img').forEach(img=>img.replaceWith(thumbnail(img)));
-   block.querySelectorAll('details').forEach(d=>d.classList.add('report-details'));section.append(block);
+   block.querySelectorAll('img').forEach(img=>{if(!img.closest('.ui-photo'))img.replaceWith(thumbnail(img));});
+   block.querySelectorAll('details').forEach(d=>d.classList.add('report-details'));enhanceShareBenchmarks(block,keywordData);section.append(block);
   }
   else if(id==='03'&&negatives){
    const block=el('section','panel negatives-panel');block.append(...[...negatives.childNodes].map(n=>n.cloneNode(true)));
@@ -66,13 +67,13 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
     button.type='button';button.disabled=!box.value.trim();box.after(button);
     const status=el('p','secondary');status.setAttribute('role','status');button.after(status);
     button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(box.value);status.textContent='已复制';}catch{box.focus();box.select();status.textContent='自动复制不可用，已选中文本，请手动复制。';}});
-   });condenseModuleDates(block);condenseRules(block);foldLongTables(block);section.append(block);
+   });condenseModuleDates(block);condenseRules(block);enhanceNegativeProducts(block,keywordData);foldLongTables(block);section.append(block);
   }
   else if(id==='04'&&competitors){
    const block=el('section','panel competitors-panel');block.append(...[...competitors.childNodes].map(n=>n.cloneNode(true)));
-   if(!block.querySelector('[data-full-analysis]'))enhanceCompetitors(block);
+   enhanceCompetitors(block);
    block.querySelectorAll('table').forEach(table=>{table.classList.add('report-table','competitors-table');if(table.closest('.ui-table-scroll'))return;const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','竞对对比表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
-   block.querySelectorAll('img').forEach(img=>img.replaceWith(thumbnail(img)));
+   block.querySelectorAll('img').forEach(img=>{if(!img.closest('.ui-photo'))img.replaceWith(thumbnail(img));});
    block.querySelectorAll('details').forEach(d=>d.classList.add('report-details'));section.append(block);
   }
   else if(id==='05'&&images){

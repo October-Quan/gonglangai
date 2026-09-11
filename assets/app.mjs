@@ -1,4 +1,4 @@
-import {renderReport} from './report.mjs?v=20260911-reading';
+import {renderReport} from './report.mjs?v=20260911-apparel';
 import {mountCompetitorTool,competitorStates} from './competitor-tool.mjs?v=20260911-full2';
 import {mountImageTool} from './image-tool.mjs?v=20260911-full2';
 let competitorUI=null,imageUI=null;

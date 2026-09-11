@@ -11,7 +11,7 @@ function stateClass(s){return /待核验|未确认|证据不足/.test(s)?'pendin
 function status(s){return make('span','ui-status '+stateClass(s),s);}
 function asin(e){return e?lines(e).join('\n').match(/\bB0[A-Z0-9]{8}\b/)?.[0]||null:null;}
 function imageURL(img){try{const u=new URL(img?.getAttribute('src'));return u.protocol==='https:'&&u.hostname==='m.media-amazon.com'&&!u.username&&!u.password&&!u.port?u.href:null;}catch{return null;}}
-function photo(source,label,cls=''){
+export function photo(source,label,cls=''){
  const url=imageURL(source),box=make('div','ui-photo '+cls);
  if(!url){box.append(make('span','image-missing','图片待核验'));return box;}
  const img=make('img');img.src=url;img.alt=label;img.loading='lazy';img.referrerPolicy='no-referrer';box.append(img);
@@ -55,28 +55,49 @@ export function enhanceCompetitors(block){
  const featureHeaders=features?[...features.rows[0].cells].slice(1,-1):[];
  if(features&&(featureHeaders.length!==ids.length||featureHeaders.some((e,i)=>asin(e)!==ids[i])))return;
  const labels=ids.map((id,i)=>{const raw=featureHeaders[i]?lines(featureHeaders[i]).join(' ').replaceAll(id,'').replace(/自己|[·\s]/g,''):'';return raw||(i===0?'自己商品':'竞品 '+i);});
- const heading=copy(block.querySelector('h2')),summary=make('p','ui-subtitle',`自己与 ${rows.length-1} 家竞对 · 基础指标与已审定卖点`),view=make('div','ui-competitor-view');
+ const heading=copy(block.querySelector('h2')),summary=make('p','ui-subtitle',`自己与 ${rows.length-1} 家竞对 · 纵向指标与服装需求对照`),view=make('div','ui-competitor-view');
  const controls=chooser('查看竞对',ids.slice(1).map((id,i)=>[id,labels[i+1]+' · '+id]).concat([['all','全部商品总览']]),render);
  const archive=fold('完整数据、来源与口径',original.filter(n=>n!==block.querySelector('h2')));
- block.replaceChildren(heading,summary,controls,make('p','ui-note','月销为供应商估算；资料缺项及销量占比仍待核验。完整来源与观测时间可展开查看。'),view,archive);block.classList.add('ui-competitors');
+ block.replaceChildren(heading,summary,controls,make('p','ui-note','关注款式、版型、面料、透视程度、穿着场景与尺码/颜色变体。月销为供应商估算；父体/子体口径未确认时，不直接比较单一颜色的销量或评分。'),view,archive);block.classList.add('ui-competitors');
  function product(index){
   const row=rows[index],card=make('article','ui-product-card '+(index===0?'own':'rival'));
   card.append(make('span','ui-role',index===0?'自己':'当前竞对'),photo(row.cells[0].querySelector('img'),labels[index]+' '+ids[index]),make('h3','',labels[index]),make('p','ui-asin',ids[index]));
   const title=row.cells[0].querySelector('details p');if(title)card.append(make('p','ui-product-title',text(title)));
   const metrics=make('div','ui-product-metrics');for(const i of [1,2,3]){const e=make('div');e.append(make('span','',text(base.rows[0].cells[i])),make('strong','',lines(row.cells[i]).join(' ')||'待核验'));metrics.append(e);}card.append(metrics);return card;
  }
+ function metricDifference(index,own,rival){
+  const a=lines(own).join(' '),b=lines(rival).join(' ');
+  if(/未提供|待核验|未知|^—$/.test(a+' '+b))return '资料不足，待核验';
+  const numeric=v=>{const clean=v.replace(/[$,]/g,'').trim();return /^\d+(\.\d+)?$/.test(clean)?Number(clean):null;};
+  const x=numeric(a),y=numeric(b);
+  if([1,2,3,4,7,9].includes(index)&&x!==null&&y!==null){
+   const d=x-y,unit={1:'美元',2:'分',3:'条评分',4:'件/月（估算）',7:'个变体',9:'张图'}[index];
+   if(d===0)return '两者相同'+(index===4?'（供应商估算）':'');
+   const extra=index===1&&y>0?'（相对竞品 '+(Math.abs(d)/y*100).toFixed(1)+'%）':'';
+   return '自己'+(d>0?'高':'低')+' '+Math.abs(d).toLocaleString('en-US',{maximumFractionDigits:2})+' '+unit+extra+(index===3||index===4?'；需核对父/子体口径':'');
+  }
+  if(index===6)return '需确认相同排名类目后比较';
+  return a===b?'记录一致':'按两侧原记录对照';
+ }
+
  function render(value){
   view.replaceChildren();
-  if(value==='all'){view.append(make('h3','ui-section-title','全部商品基础指标'),scroll(copy(base),'全部商品基础指标'));if(features)view.append(make('h3','ui-section-title','全部商品卖点对比'),scroll(copy(features),'全部商品卖点对比'));return;}
+  if(value==='all'){
+   const cards=make('div','ui-product-overview');rows.forEach((_,i)=>cards.append(product(i)));view.append(cards);
+   const all=table(['维度',...ids.map((id,i)=>(i===0?'自己 · ':'竞品 · ')+id)],'ui-all-facts');
+   for(let i=1;i<10;i++){const r=all.tBodies[0].insertRow();r.append(make('th','',text(base.rows[0].cells[i])),...rows.map(row=>copy(row.cells[i])));}
+   view.append(make('h3','ui-section-title','全部商品 · 纵向指标'),scroll(all,'全部商品纵向指标'));
+   if(features)view.append(make('h3','ui-section-title','全部商品 · 特征与原有结论'),scroll(copy(features),'全部商品特征对比'));return;
+  }
   const index=ids.indexOf(value);if(index<1)return;
   const cards=make('div','ui-product-pair');cards.append(product(0),product(index));view.append(cards);
-  const bt=table(['维度','自己 · '+ids[0],'竞对 · '+ids[index]],'ui-facts-table');
-  for(let i=1;i<10;i++){const row=bt.tBodies[0].insertRow();row.append(make('th','',text(base.rows[0].cells[i])),copy(rows[0].cells[i]),copy(rows[index].cells[i]));}
+  const bt=table(['维度','自己 · '+ids[0],'竞对 · '+ids[index],'指标差异'],'ui-facts-table');
+  for(let i=1;i<10;i++){const row=bt.tBodies[0].insertRow();row.append(make('th','',text(base.rows[0].cells[i])),copy(rows[0].cells[i]),copy(rows[index].cells[i]),make('td','ui-metric-difference',metricDifference(i,rows[0].cells[i],rows[index].cells[i])));}
   view.append(make('h3','ui-section-title','基础指标'),scroll(bt,'双方基础指标'));
   if(features){
    const ft=table(['维度','自己','当前竞对','原有多方结论'],'ui-pair-features');
    for(const source of features.tBodies[0].rows){const r=ft.tBodies[0].insertRow();r.append(copy(source.cells[0]),copy(source.cells[1]),copy(source.cells[index+1]),copy(source.cells[source.cells.length-1]));}
-   view.append(make('h3','ui-section-title',`已审定卖点 · ${features.tBodies[0].rows.length} 项`),make('p','ui-note','右列保留原有多方结论，切换竞对不重新判档。销量占比缺失仍待核验。'),scroll(ft,'双方卖点与原有结论'));
+   view.append(make('h3','ui-section-title',`特征与需求对照 · ${features.tBodies[0].rows.length} 项`),make('p','ui-note','右列保留原有多方结论，切换竞对不重新判档。销量占比缺失仍待核验。'),scroll(ft,'双方卖点与原有结论'));
   }
  }
  render(ids[1]);
