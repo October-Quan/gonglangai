@@ -2,7 +2,7 @@
 import {adFacts,parseMetric,assessOpportunity} from './opportunity.mjs';
 import {adRates} from './ad-rates.mjs?v=20260909-rates';
 import {acosDisplay,sourceDateRange} from './report-display.mjs?v=20260909-display';
-import {moduleSource,mountModules} from './report-modules.mjs?v=20260911-ad-mapping';
+import {moduleSource,mountModules} from './report-modules.mjs?v=20260911-report-ui';
 const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
 function lines(cell){const clone=cell.cloneNode(true);clone.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));return clone.textContent.split('\n').map(s=>s.trim()).filter(Boolean);}
 const number=value=>/^\d+(\.\d+)?$/.test(value||'')?Number(value).toLocaleString('en-US',{maximumFractionDigits:8}):value||'待核验';
@@ -27,11 +27,11 @@ function thumbnail(source){
  const missing=()=>{wrap.replaceChildren(el('span','image-missing','主图待核验'));};
  if(!source){missing();return wrap;}
  let url;try{url=new URL(source.getAttribute('src'));if(url.protocol!=='https:')throw new Error();}catch{missing();return wrap;}
- const pending=el('span','thumbnail-loading','加载中'),img=el('img');img.width=44;img.height=44;img.alt='竞品商品主图';img.loading='lazy';img.referrerPolicy='no-referrer';
+ const pending=el('span','thumbnail-loading','加载中'),img=el('img');img.width=44;img.height=44;img.alt=source.getAttribute('alt')||'商品主图';img.loading='lazy';img.referrerPolicy='no-referrer';
  img.addEventListener('load',()=>{pending.remove();img.classList.add('loaded');},{once:true});img.addEventListener('error',missing,{once:true});wrap.append(pending,img);img.src=url.href;return wrap;
 }
 export function renderReport(html,host,meta,note,ownAsin=''){
- const fragment=window.DOMPurify.sanitize(html,{RETURN_DOM_FRAGMENT:true,ALLOWED_TAGS:['h1','h2','h3','textarea','details','summary','p','div','table','thead','tbody','tr','th','td','br','hr','img'],ALLOWED_ATTR:['src','alt','width','height','scope','data-report-format','data-module-panel','data-module-state','data-negative-copy','data-competitor-partial','data-competitor-qualitative','data-image-table','data-image-card','data-ad-mapping-status','data-ad-mapping-row','data-ad-mapping-details','readonly','aria-label'],ALLOW_DATA_ATTR:false,FORBID_TAGS:['style','script','iframe','form','input','svg','math']});
+ const fragment=window.DOMPurify.sanitize(html,{RETURN_DOM_FRAGMENT:true,ALLOWED_TAGS:['h1','h2','h3','textarea','details','summary','p','div','table','thead','tbody','tr','th','td','br','hr','img'],ALLOWED_ATTR:['src','alt','width','height','scope','data-report-format','data-module-panel','data-module-state','data-negative-copy','data-competitor-partial','data-competitor-qualitative','data-image-table','data-image-card','data-organic-candidates','data-organic-product','data-ad-mapping-status','data-ad-mapping-row','data-ad-mapping-details','readonly','aria-label'],ALLOW_DATA_ATTR:false,FORBID_TAGS:['style','script','iframe','form','input','svg','math']});
  const master=moduleSource(fragment),sourceRoot=master??fragment;
  const source=sourceRoot.querySelector('table');
  if(!source||source.querySelectorAll('thead th').length!==12||!source.tBodies.length||[...source.tBodies[0].rows].some(r=>r.cells.length!==12))throw new Error('报告结构无法识别，请联系管理员核验。');

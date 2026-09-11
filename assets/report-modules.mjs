@@ -1,3 +1,4 @@
+import {enhanceOrganic,enhanceCompetitors,enhanceImages} from './report-ui.mjs?v=20260911-ui';
 const modules=[['01','关键词作战总表'],['02','自然位标杆'],['03','否定词清单'],['04','竞对对比'],['05','图片与卖点诊断'],['06','广告诊断与优化']];
 const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text)n.textContent=text;return n;};
 export function moduleSource(fragment){
@@ -48,15 +49,16 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
   if(id==='01')section.append(meta,panel);
   else if(id==='02'&&organic){
    const block=el('section','panel organic-panel');block.append(...[...organic.childNodes].map(n=>n.cloneNode(true)));
+   enhanceOrganic(block,competitors);
    const table=block.querySelector('table');table.className='report-table organic-table';
    const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','自然位标杆表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);
    block.querySelectorAll('img').forEach(img=>img.replaceWith(thumbnail(img)));
-   block.querySelectorAll('details').forEach(d=>d.className='report-details');section.append(block);
+   block.querySelectorAll('details').forEach(d=>d.classList.add('report-details'));section.append(block);
   }
   else if(id==='03'&&negatives){
    const block=el('section','panel negatives-panel');block.append(...[...negatives.childNodes].map(n=>n.cloneNode(true)));
    block.querySelectorAll('table').forEach(table=>{table.className='report-table negatives-table';const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','否定词清单表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
-   block.querySelectorAll('details').forEach(d=>d.className='report-details');
+   block.querySelectorAll('details').forEach(d=>d.classList.add('report-details'));
    block.querySelectorAll('textarea[data-negative-copy]').forEach(box=>{
     box.readOnly=true;box.rows=4;
     const button=el('button','button secondary-button','复制'+(box.getAttribute('data-negative-copy')==='exact'?'精准否定':'词组否定'));
@@ -67,25 +69,27 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
   }
   else if(id==='04'&&competitors){
    const block=el('section','panel competitors-panel');block.append(...[...competitors.childNodes].map(n=>n.cloneNode(true)));
-   block.querySelectorAll('table').forEach(table=>{table.className='report-table competitors-table';const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','竞对对比表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
+   enhanceCompetitors(block);
+   block.querySelectorAll('table').forEach(table=>{table.classList.add('report-table','competitors-table');if(table.closest('.ui-table-scroll'))return;const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','竞对对比表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
    block.querySelectorAll('img').forEach(img=>img.replaceWith(thumbnail(img)));
-   block.querySelectorAll('details').forEach(d=>d.className='report-details');section.append(block);
+   block.querySelectorAll('details').forEach(d=>d.classList.add('report-details'));section.append(block);
   }
   else if(id==='05'&&images){
    const block=el('section','panel images-panel');block.append(...[...images.childNodes].map(n=>n.cloneNode(true)));
-   block.querySelectorAll('table').forEach(table=>{table.className='report-table image-matrix';const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','图片证据矩阵，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
+   enhanceImages(block);
+   block.querySelectorAll('table').forEach(table=>{table.classList.add('report-table','image-matrix');if(table.closest('.ui-table-scroll'))return;const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','图片证据矩阵，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
    block.querySelectorAll('[data-image-card]').forEach(card=>card.className='image-evidence-card');
    block.querySelectorAll('img').forEach(img=>{
     let u;try{u=new URL(img.getAttribute('src'));if(u.protocol!=='https:'||u.hostname!=='m.media-amazon.com'||u.username||u.password||u.port)throw new Error();}catch{img.replaceWith(el('p','secondary','图片地址待核验'));return;}
     img.loading='lazy';img.referrerPolicy='no-referrer';img.className='evidence-photo';
     img.addEventListener('error',()=>img.replaceWith(el('p','secondary','图片加载失败，模型证据保留，当前画面待核验')),{once:true});
-   });block.querySelectorAll('details').forEach(d=>d.className='report-details');section.append(block);
+   });block.querySelectorAll('details').forEach(d=>d.classList.add('report-details'));section.append(block);
   }
   else if(id==='06'&&adPlan){
    const block=el('section','panel ad-plan-panel');block.append(...[...adPlan.childNodes].map(n=>n.cloneNode(true)));
    if(!block.querySelector('[data-ad-mapping-status]')){const notice=el('p','secondary','待补投放映射；这是历史词诊断，尚未定位实际操作对象。');notice.setAttribute('data-ad-mapping-status','missing');block.querySelector('h2')?.after(notice);}
    block.querySelectorAll('table').forEach(table=>{table.className='report-table ad-plan-table';const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','广告诊断动作表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
-   block.querySelectorAll('details').forEach(d=>d.className='report-details');section.append(block);
+   block.querySelectorAll('details').forEach(d=>d.classList.add('report-details'));section.append(block);
   }
   else{const placeholder=el('section','module-placeholder panel');placeholder.append(el('span','module-placeholder-number',id),el('h2','',title),el('p','secondary','即将上线'));section.append(placeholder);}
   button.addEventListener('click',()=>{
