@@ -2,4 +2,4 @@
 
 [data-voc="submit"] .panel{padding:24px;margin-bottom:24px}.voc-grid>div{min-width:0}.voc-grid fieldset{border:0;padding:0;margin:20px 0 0;min-width:0}.voc-grid legend{padding:0}.voc-options{margin-bottom:8px}@media(max-width:700px){[data-voc="submit"] .panel{padding:18px}.voc-grid{gap:20px}}
 
-.voc-quote{margin-top:24px;padding:20px;border:1px solid #c5d7f3;background:#f5f8fe;border-radius:14px;overflow-wrap:anywhere}.voc-quote h3{margin-top:0}.voc-consent{display:flex;align-items:flex-start;gap:9px;margin:20px 0;line-height:1.7}.voc-consent input{margin-top:6px;flex:none}.voc-replay{margin-top:24px;padding-top:20px;border-top:1px solid #e5ebf4}.voc-quote button{max-width:100%;white-space:normal}
+.voc-replay{margin-top:24px;padding-top:20px;border-top:1px solid #e5ebf4}
