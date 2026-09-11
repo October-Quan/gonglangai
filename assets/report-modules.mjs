@@ -14,7 +14,7 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
   checkMappingPresentation(adPlan);
   const tables=[...adPlan.querySelectorAll('table')];
   if(tables.length!==2||tables.some(t=>t.querySelectorAll('thead th').length!==4||!t.tBodies[0]||[...t.tBodies[0].rows].some(r=>r.cells.length!==4))||tables[0].tBodies[0].rows.length+tables[1].tBodies[0].rows.length>20)throw new Error('广告诊断结构不完整，请联系管理员核验。');
-  for(const [i,t] of tables.entries())for(const r of t.tBodies[0].rows){const action=r.cells[1].textContent.trim();if(!(i===1?['待我判']:['该停','该降','该观察','该守','该加']).includes(action)||(action==='该观察'&&['','—'].includes(r.cells[3].textContent.trim())))throw new Error('广告诊断动作或退出条件不完整。');}
+  for(const [i,t] of tables.entries())for(const r of t.tBodies[0].rows){const action=r.cells[1].textContent.trim();if(!(i===1?(adPlan.querySelector('[data-full-analysis]')?['待补资料']:['待我判']):['该停','该降','该观察','该守','该加']).includes(action)||(action==='该观察'&&['','—'].includes(r.cells[3].textContent.trim())))throw new Error('广告诊断动作或退出条件不完整。');}
  }
  if(competitors){
   const tables=[...competitors.querySelectorAll('table')];
@@ -69,14 +69,14 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
   }
   else if(id==='04'&&competitors){
    const block=el('section','panel competitors-panel');block.append(...[...competitors.childNodes].map(n=>n.cloneNode(true)));
-   enhanceCompetitors(block);
+   if(!block.querySelector('[data-full-analysis]'))enhanceCompetitors(block);
    block.querySelectorAll('table').forEach(table=>{table.classList.add('report-table','competitors-table');if(table.closest('.ui-table-scroll'))return;const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','竞对对比表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
    block.querySelectorAll('img').forEach(img=>img.replaceWith(thumbnail(img)));
    block.querySelectorAll('details').forEach(d=>d.classList.add('report-details'));section.append(block);
   }
   else if(id==='05'&&images){
    const block=el('section','panel images-panel');block.append(...[...images.childNodes].map(n=>n.cloneNode(true)));
-   enhanceImages(block);
+   if(!block.querySelector('[data-full-analysis]'))enhanceImages(block);
    block.querySelectorAll('table').forEach(table=>{table.classList.add('report-table','image-matrix');if(table.closest('.ui-table-scroll'))return;const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','图片证据矩阵，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
    block.querySelectorAll('[data-image-card]').forEach(card=>card.className='image-evidence-card');
    block.querySelectorAll('img').forEach(img=>{

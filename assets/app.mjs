@@ -1,6 +1,6 @@
-import {renderReport} from './report.mjs?v=20260911-report-ui';
-import {mountCompetitorTool,competitorStates} from './competitor-tool.mjs?v=20260911-submit-direct';
-import {mountImageTool} from './image-tool.mjs?v=20260911-submit-direct';
+import {renderReport} from './report.mjs?v=20260911-full';
+import {mountCompetitorTool,competitorStates} from './competitor-tool.mjs?v=20260911-full';
+import {mountImageTool} from './image-tool.mjs?v=20260911-full';
 let competitorUI=null,imageUI=null;
 const $=id=>document.getElementById(id);
 let api,page,preview,humanError,currentUser,taskOffset=0,taskTotal=0,refreshFailures=0,refreshing=false,poll,submitting=false,draft=null;
@@ -13,7 +13,7 @@ async function showQuote(task,scroll=false){
  $('cost-details').hidden=!q;
  message('cost-message',task.status==='失败'?(task.failure_reason||'报表核验失败，请检查报表。'):task.status==='已完成'?'分析已完成。':task.status==='进行中'?'正在分析，可在任务列表查看进度。':q?'报表核验通过，后台自动排队处理，无需再次确认。':'正在核验报表，核验通过后自动开始，无需再次确认。',task.status==='失败');
  if(q){const s=q.input_summary||{};$('cost-source').textContent=`报表 ${s.row_count??'—'} 行 · ${s.start_date||'日期未提供'} 至 ${s.end_date||'日期未提供'} · ${s.currency||'币种列未提供'}`;
- $('cost-credits').textContent=q.credit_limit+' Credit';$('cost-yuan').textContent='¥'+Number(q.deepseek_limit_yuan).toFixed(2);
+ $('cost-credits').textContent=q.credit_limit+' Credit';$('cost-yuan').textContent='模型合计最高 ¥6.00';
  $('cost-expiry').textContent='后台按实际调用量计费，并保留单次上限保护。';}
  if(scroll)$('cost-card').scrollIntoView({behavior:'smooth',block:'center'});
 }
@@ -59,7 +59,7 @@ async function submitTask(event){
   message('submit-message','报表已上传，正在登记任务…');draft.attempts++;saveDraft();
   const existing=await api.task(draft.row.id,currentUser.id);
   if(!existing)await api.insert(draft.row);
-  const submitted={...draft.row,status:'待处理'};finishDraft();message('submit-message',preview?'预览提交成功：未上传文件，也未创建真实任务。':'提交成功，后台将自动核验并开始分析。可关闭页面，稍后查看进度。');taskOffset=0;await refreshTasks();
+  const submitted={...draft.row,status:'待处理'};finishDraft();message('submit-message',preview?'预览提交成功：未上传文件，也未创建真实任务。':'提交成功，后台自动生成六个模块：关键词、自然位、否定词、竞对、图片和广告诊断。可关闭页面，稍后查看报告。');taskOffset=0;await refreshTasks();
  }catch(error){
   message('submit-message',humanError(error)+(draft?' 报表已上传，任务登记尚未确认；重试会核对并沿用同一任务号。':' 报表上传未确认，未登记任务。'),true);
   if(draft)$('submit').textContent='重试登记任务';
