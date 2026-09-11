@@ -2,7 +2,7 @@
 import {adFacts,parseMetric,assessOpportunity} from './opportunity.mjs';
 import {adRates} from './ad-rates.mjs?v=20260909-rates';
 import {acosDisplay,sourceDateRange} from './report-display.mjs?v=20260909-display';
-import {moduleSource,mountModules} from './report-modules.mjs?v=20260911-full';
+import {moduleSource,mountModules} from './report-modules.mjs?v=20260911-image-evidence';
 const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
 function lines(cell){const clone=cell.cloneNode(true);clone.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));return clone.textContent.split('\n').map(s=>s.trim()).filter(Boolean);}
 const number=value=>/^\d+(\.\d+)?$/.test(value||'')?Number(value).toLocaleString('en-US',{maximumFractionDigits:8}):value||'待核验';

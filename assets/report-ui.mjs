@@ -157,3 +157,50 @@ export function enhanceImages(block){
  }
  renderMatrix('all');
 }
+
+// The automatic pipeline stores image IDs in matrix cells and the matching
+// photographs inside each product's original-image details. Keep that binding.
+export function enhanceFullImages(block,competitors){
+ const source=block.querySelector('[data-full-analysis]');if(!source)return;
+ const stages=imageStages(source).filter(s=>s.matrix),featureTable=competitors?.querySelectorAll('table')[1];
+ if(!stages.length)return;
+ for(const s of stages){
+  s.id=s.heading.match(/\bB0[A-Z0-9]{8}\b/)?.[0];
+  s.cards=s.nodes.flatMap(n=>[...(n.matches('[data-image-card]')?[n]:[]),...n.querySelectorAll('[data-image-card]')]);
+  s.pictures=new Map(s.cards.map(c=>[text(c.querySelector('p')),c.querySelector('img')]));
+ }
+ const names=[...stages[0].matrix.tBodies[0].rows].map(r=>text(r.cells[0]));
+ if(stages.some(s=>!s.id||s.matrix.rows[0].cells.length!==3||s.matrix.tBodies[0].rows.length!==names.length||[...s.matrix.tBodies[0].rows].some((r,i)=>text(r.cells[0])!==names[i])))return;
+ const original=[...source.childNodes],checklist=make('ol','ui-checklist'),heading=copy(source.querySelector('h2'));
+ const featureRows=[...(featureTable?.tBodies[0]?.rows??[])];
+ for(const name of names){
+  const feature=featureRows.find(r=>lines(r.cells[0])[0]===name),li=make('li'),head=make('div','ui-check-head');
+  head.append(make('strong','',name),make('span','ui-source-chip','模型选择'));li.append(head);
+  const reason=feature?.cells[0].querySelector('details p');if(reason)li.append(make('p','',text(reason)));
+  checklist.append(li);
+ }
+ const matrix=table(['购买要素',...stages.map((s,i)=>(i===0?'自己':'竞对 '+i)+' · '+s.id)],'ui-full-image-matrix');
+ [...matrix.rows[0].cells].forEach((cell,i)=>{cell.scope='col';if(i===1)cell.classList.add('ui-own-column');});
+ const photosRow=matrix.tBodies[0].insertRow();photosRow.append(make('th','','原图总览'));
+ function imageEvidence(stage,ids,compact=false){
+  const gallery=make('div','ui-evidence-photos'+(compact?' compact':''));
+  for(const id of [...new Set(ids)]){
+   const item=make('figure','ui-evidence-figure');item.dataset.evidenceId=id;
+   const img=stage.pictures.get(id);
+   item.append(img?photo(img,id):make('div','ui-no-photo','该图未提供'),make('figcaption','',id));gallery.append(item);
+  }
+  if(!ids.length)gallery.append(make('p','ui-note','本项没有引用图片'));
+  return gallery;
+ }
+ stages.forEach((s,i)=>{const cell=make('td',i===0?'ui-own-column':'');cell.append(imageEvidence(s,[...s.pictures.keys()],true),make('p','ui-image-count',s.pictures.size+' 张已分析原图'));photosRow.append(cell);});
+ names.forEach((name,index)=>{
+  const row=matrix.tBodies[0].insertRow(),label=make('th','ui-feature-name');label.scope='row';label.append(make('span','ui-feature-number',String(index+1)),make('strong','',name));row.append(label);
+  stages.forEach((s,i)=>{const originalRow=s.matrix.tBodies[0].rows[index],ids=lines(originalRow.cells[2]),cell=make('td','ui-full-evidence'+(i===0?' ui-own-column':''));
+   cell.append(imageEvidence(s,ids),make('span','ui-analysis-label','豆包观察与建议'),make('p','ui-full-observation',text(originalRow.cells[1])));row.append(cell);
+  });
+ });
+ const summaries=make('div','ui-full-summaries');
+ for(const s of stages){const summary=s.nodes.find(n=>n.tagName==='P');if(summary)summaries.append(fold(s.heading+' · 整体诊断',[copy(summary)]));}
+ block.replaceChildren(heading,make('p','ui-subtitle',`${names.length} 项购买要素 · 自己与 ${stages.length-1} 家竞对 · ${stages.reduce((n,s)=>n+s.pictures.size,0)} 张真实图片`),make('h3','ui-section-title','买家下单前需要确认的 '+names.length+' 件事'),checklist,make('h3','ui-section-title','卖点 × 多方图片证据对比'),make('p','ui-note','每张缩略图对应本项引用的原图，点击图片可放大。图下保留豆包的观察与建议。'),scroll(matrix,'自己与竞对图片证据对比'),summaries,fold('完整分析与原始图片记录',original));
+ block.classList.add('ui-images','ui-full-images');
+}
