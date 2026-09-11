@@ -28,3 +28,5 @@
 @media(max-width:700px){.competitors-panel{padding:16px}}
 
 .images-panel{min-width:0}.image-matrix{width:100%;min-width:880px}.image-matrix td{white-space:normal;min-width:240px}.image-evidence-card{border:1px solid var(--border,#e1e6ef);border-radius:10px;padding:16px;margin:16px 0;overflow-wrap:anywhere}.evidence-photo{display:block;max-width:100%;width:280px;height:280px;object-fit:contain;background:#fff}.images-panel p{overflow-wrap:anywhere}
+
+.ad-plan-panel{padding:24px;min-width:0}.ad-plan-panel>p{font-size:13px;color:#64748b;line-height:1.8}.ad-plan-panel h3{margin-top:28px}.ad-plan-table{width:100%;min-width:940px;table-layout:fixed}.ad-plan-table th,.ad-plan-table td{padding:16px;vertical-align:top;white-space:normal;overflow-wrap:anywhere}.ad-plan-table th:nth-child(1){width:18%}.ad-plan-table th:nth-child(2){width:10%}.ad-plan-table th:nth-child(3){width:40%}.ad-plan-table th:nth-child(4){width:32%}@media(max-width:700px){.ad-plan-panel{padding:16px}}

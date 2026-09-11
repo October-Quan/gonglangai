@@ -5,10 +5,15 @@ export function moduleSource(fragment){
  if(!markers.length)return null;
  if(markers.length!==1||markers[0].getAttribute('data-report-format')!=='modules-v1')throw new Error('报告模块版本无法识别，请联系管理员核验。');
  const panels=[...markers[0].querySelectorAll('[data-module-panel]')];
- if(panels.length!==6||modules.some(([id],i)=>panels[i].getAttribute('data-module-panel')!==id||!(id==='01'?['ready']:['02','03','04','05'].includes(id)?['ready','pending']:['pending']).includes(panels[i].getAttribute('data-module-state'))))throw new Error('报告模块结构不完整，请联系管理员核验。');
+ if(panels.length!==6||modules.some(([id],i)=>panels[i].getAttribute('data-module-panel')!==id||!(id==='01'?['ready']:['ready','pending']).includes(panels[i].getAttribute('data-module-state'))))throw new Error('报告模块结构不完整，请联系管理员核验。');
  return panels[0];
 }
-export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,competitors=null,images=null){
+export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,competitors=null,images=null,adPlan=null){
+ if(adPlan){
+  const tables=[...adPlan.querySelectorAll('table')];
+  if(tables.length!==2||tables.some(t=>t.querySelectorAll('thead th').length!==4||!t.tBodies[0]||[...t.tBodies[0].rows].some(r=>r.cells.length!==4))||tables[0].tBodies[0].rows.length+tables[1].tBodies[0].rows.length>20)throw new Error('广告诊断结构不完整，请联系管理员核验。');
+  for(const [i,t] of tables.entries())for(const r of t.tBodies[0].rows){const action=r.cells[1].textContent.trim();if(!(i===1?['待我判']:['该停','该降','该观察','该守','该加']).includes(action)||(action==='该观察'&&['','—'].includes(r.cells[3].textContent.trim())))throw new Error('广告诊断动作或退出条件不完整。');}
+ }
  if(competitors){
   const tables=[...competitors.querySelectorAll('table')];
   const partial=competitors.querySelector('[data-competitor-partial="true"]');
@@ -32,7 +37,7 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
  meta.before(layout);
  const buttons=[],sections=[];
  for(const [id,title] of modules){
-  const ready=id==='01'||(id==='02'&&organic)||(id==='03'&&negatives)||(id==='04'&&competitors)||(id==='05'&&images);
+  const ready=id==='01'||(id==='02'&&organic)||(id==='03'&&negatives)||(id==='04'&&competitors)||(id==='05'&&images)||(id==='06'&&adPlan);
   const button=el('button','module-button'+(ready?'':' pending'));
   button.type='button';button.setAttribute('aria-controls','diagnosis-'+id);button.setAttribute('aria-pressed',String(id==='01'));
   button.append(el('span','module-number',id),el('span','module-title',title));
@@ -74,6 +79,11 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
     img.loading='lazy';img.referrerPolicy='no-referrer';img.className='evidence-photo';
     img.addEventListener('error',()=>img.replaceWith(el('p','secondary','图片加载失败，模型证据保留，当前画面待核验')),{once:true});
    });block.querySelectorAll('details').forEach(d=>d.className='report-details');section.append(block);
+  }
+  else if(id==='06'&&adPlan){
+   const block=el('section','panel ad-plan-panel');block.append(...[...adPlan.childNodes].map(n=>n.cloneNode(true)));
+   block.querySelectorAll('table').forEach(table=>{table.className='report-table ad-plan-table';const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','广告诊断动作表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
+   block.querySelectorAll('details').forEach(d=>d.className='report-details');section.append(block);
   }
   else{const placeholder=el('section','module-placeholder panel');placeholder.append(el('span','module-placeholder-number',id),el('h2','',title),el('p','secondary','即将上线'));section.append(placeholder);}
   button.addEventListener('click',()=>{

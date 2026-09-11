@@ -2,7 +2,7 @@
 import {adFacts,parseMetric,assessOpportunity} from './opportunity.mjs';
 import {adRates} from './ad-rates.mjs?v=20260909-rates';
 import {acosDisplay,sourceDateRange} from './report-display.mjs?v=20260909-display';
-import {moduleSource,mountModules} from './report-modules.mjs?v=20260911-apparel-matrix';
+import {moduleSource,mountModules} from './report-modules.mjs?v=20260911-ad-plan';
 const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
 function lines(cell){const clone=cell.cloneNode(true);clone.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));return clone.textContent.split('\n').map(s=>s.trim()).filter(Boolean);}
 const number=value=>/^\d+(\.\d+)?$/.test(value||'')?Number(value).toLocaleString('en-US',{maximumFractionDigits:8}):value||'待核验';
@@ -107,6 +107,6 @@ export function renderReport(html,host,meta,note,ownAsin=''){
  const empty=el('p','target-empty','当前报告没有符合目标的推位候选。');empty.hidden=true;empty.setAttribute('role','status');
  checkbox.addEventListener('change',()=>{for(const row of body.rows)row.hidden=checkbox.checked&&row.dataset.candidate!=='true';empty.hidden=!(checkbox.checked&&count===0);const title=host.closest('section')?.querySelector('#word-count');if(title)title.textContent=checkbox.checked?`${count} 个推位候选 / 共 ${body.rows.length} 词`:`${body.rows.length} 个关键词`;});
  host.replaceChildren(table,empty);
- if(master)mountModules(meta,host.closest('#report-panel'),fragment.querySelector('[data-module-panel="02"][data-module-state="ready"]'),thumbnail,fragment.querySelector('[data-module-panel="03"][data-module-state="ready"]'),fragment.querySelector('[data-module-panel="04"][data-module-state="ready"]'),fragment.querySelector('[data-module-panel="05"][data-module-state="ready"]'));
+ if(master)mountModules(meta,host.closest('#report-panel'),fragment.querySelector('[data-module-panel="02"][data-module-state="ready"]'),thumbnail,fragment.querySelector('[data-module-panel="03"][data-module-state="ready"]'),fragment.querySelector('[data-module-panel="04"][data-module-state="ready"]'),fragment.querySelector('[data-module-panel="05"][data-module-state="ready"]'),fragment.querySelector('[data-module-panel="06"][data-module-state="ready"]'));
  return body.rows.length;
 }
