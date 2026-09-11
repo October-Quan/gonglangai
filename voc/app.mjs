@@ -4,7 +4,7 @@ const client=window.supabase.createClient(config.url,config.publicKey,{auth:{flo
 function message(text,error=false){$('#message').textContent=text;$('#message').className='message '+(error?'error':'');}
 function safeError(e){return /permission|row-level|42501/i.test(e?.message||'')?'当前账号无权操作此任务。':'操作未完成，请检查连接后刷新。';}
 function cell(row,text){const c=document.createElement('td');c.textContent=text??'—';row.append(c);return c;}
-let user,refreshTimer,busy=false;
+let user,refreshTimer,busy=false,refreshing=false;
 try{
  const result=await client.auth.getUser();if(result.error||!result.data.user){message('请先登录，再从工作台进入用户洞察。');const a=document.createElement('a');a.href='/';a.textContent='前往登录';$('#message').append(' ',a);}
  else{user=result.data.user;if(document.body.dataset.voc==='submit')await submission();else await report();}
@@ -20,7 +20,6 @@ async function submission(){
  await refresh();refreshTimer=setInterval(()=>refresh(),5000);window.addEventListener('pagehide',()=>clearInterval(refreshTimer),{once:true});
 }
 function addAsin(){const count=document.querySelectorAll('[data-asin]').length;if(count>=10)return;const row=document.createElement('div');row.className='voc-row';const input=document.createElement('input');input.className='input';input.maxLength=10;input.dataset.asin='';input.placeholder='例如 B09V366BDY';input.setAttribute('aria-label','商品 ASIN '+(count+1));input.autocomplete='off';row.append(input);const remove=document.createElement('button');remove.type='button';remove.className='button quiet';remove.textContent='移除';remove.onclick=()=>{if(document.querySelectorAll('[data-asin]').length>1)row.remove();$('#add-asin').disabled=false;};row.append(remove);$('#asin-rows').append(row);$('#add-asin').disabled=count+1>=10;}
-let refreshing=false;
 async function refresh(){if(refreshing)return;refreshing=true;try{const {data,error}=await client.from('voc_tasks').select('id,asins,country,review_scope,review_limit,status,annotation_progress,failure_reason,report_file_path,created_at,run_kind').eq('user_id',user.id).order('created_at',{ascending:false}).limit(100);if(error)throw error;$('#tasks').replaceChildren();$('#empty').hidden=data.length>0;
  for(const t of data){const tr=document.createElement('tr');cell(tr,new Date(t.created_at).toLocaleString('zh-CN'));cell(tr,t.asins.split('+').join('\n'));cell(tr,`${t.country} · ${t.review_scope==='family'?'含变体':'仅本ASIN'} · ${t.review_limit}条/ASIN`);cell(tr,t.status);cell(tr,t.run_kind==='skeleton'?'骨架测试 · 无标注':`${t.annotation_progress} 条`);cell(tr,t.failure_reason);const c=cell(tr,'—');if(t.status==='完成'&&t.report_file_path){const a=document.createElement('a');a.href=`report/?task=${encodeURIComponent(t.id)}`;a.textContent='打开报告';c.replaceChildren(a);}else if(t.status==='完成')c.textContent='骨架完成 · 无报告';$('#tasks').append(tr);}}
  catch(e){message(safeError(e),true);}finally{refreshing=false;}}
