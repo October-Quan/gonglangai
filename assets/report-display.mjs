@@ -25,7 +25,11 @@ export function sourceDateRange(text){
  const raw=String(text??'');
  const match=raw.match(/^广告源文件周期：(.*?) ～ (.*?)，币种 ([^。]+)。(.*)$/s);
  if(!match)return {valid:false,raw};
- const starts=match[1].split('、').map(x=>x.trim()),ends=match[2].split('、').map(x=>x.trim());
+ const sourceDate=value=>{
+  const m=value.trim().match(/^(\d{4}-\d{2}-\d{2})(?:T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?)?$/);
+  return m?.[1]??'';
+ };
+ const starts=match[1].split('、').map(sourceDate),ends=match[2].split('、').map(sourceDate);
  if(!starts.every(validDate)||!ends.every(validDate))return {valid:false,raw};
  const first=[...starts].sort()[0],last=[...ends].sort().at(-1);
  // These independent source lists cannot prove per-row pairing or daily coverage.

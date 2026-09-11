@@ -1,8 +1,9 @@
 // Preserve the source report's values and order while grouping 12 data fields into 7 display columns.
 import {adFacts,parseMetric,assessOpportunity} from './opportunity.mjs';
 import {adRates} from './ad-rates.mjs?v=20260909-rates';
-import {acosDisplay,sourceDateRange} from './report-display.mjs?v=20260909-display';
-import {moduleSource,mountModules} from './report-modules.mjs?v=20260911-image-evidence';
+import {acosDisplay,sourceDateRange} from './report-display.mjs?v=20260911-reading';
+import {moduleSource,mountModules} from './report-modules.mjs?v=20260911-reading';
+import {actionTone} from './report-reading.mjs?v=20260911-reading';
 const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
 function lines(cell){const clone=cell.cloneNode(true);clone.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));return clone.textContent.split('\n').map(s=>s.trim()).filter(Boolean);}
 const number=value=>/^\d+(\.\d+)?$/.test(value||'')?Number(value).toLocaleString('en-US',{maximumFractionDigits:8}):value||'待核验';
@@ -62,7 +63,8 @@ export function renderReport(html,host,meta,note,ownAsin=''){
   const assessment=assessOpportunity({...adFacts(fields,!c[10].textContent.includes('无投放')),rank:parseMetric(data[8][0]),ownTop3:!!topOwn});
   tr.dataset.candidate=String(assessment.candidate);
   const modelAction=fullReport?c[11].textContent.match(/(?:DeepSeek Flash 分析：)?(该停|该降|该观察|该守|该加|待补资料)：/)?.[1]:null;
-  const targetBadge=el('span','badge '+assessment.tone,modelAction??assessment.label);word.children[1].replaceWith(targetBadge);
+  const tone=actionTone(modelAction,assessment.tone);
+  const targetBadge=el('span','badge '+tone,modelAction??assessment.label);word.children[1].replaceWith(targetBadge);
   if(category==='待核验'&&!assessment.label.includes('核验'))word.append(badge('待核验'));
   if(assessment.candidate)tr.classList.add('push-candidate');
   if(topOwn)word.append(el('span','fact-tag','✓ 自己在点击前三'));
@@ -98,7 +100,7 @@ export function renderReport(html,host,meta,note,ownAsin=''){
    item.append(el('div','share-value',formatClickShare(raw)),el('div','secondary share-raw','原值 '+(raw||'待核验')));grid.append(item);
   }
   top.append(grid,el('div','secondary share-note','点击份额 · 精度以接口原值为准'));
-  const advice=el('td','advice-cell');const title=el('div','advice-title');title.append(el('span','badge '+assessment.tone,modelAction??assessment.label),el('span','secondary',fullReport?'DeepSeek Flash 分析':'按当前目标判断'));
+  const advice=el('td','advice-cell');const title=el('div','advice-title');title.append(el('span','badge '+tone,modelAction??assessment.label),el('span','secondary',fullReport?'DeepSeek Flash 分析':'按当前目标判断'));
   advice.append(title,el('p','advice-copy',fullReport?c[11].textContent.replace(/^DeepSeek Flash 分析：/,''):assessment.action));
   advice.append(fullReport?details('数值目标核对',[assessment.label,assessment.action]):details(versionedReport?'生成时判断与补充（targets-v1）':'生成时建议（历史规则）',[(versionedReport?'分组依据：':'原分类：')+category,c[11].textContent]));
   tr.append(word,ads,ranks,heat,competition,top,advice);body.append(tr);

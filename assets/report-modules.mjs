@@ -1,4 +1,5 @@
 import {enhanceOrganic,enhanceCompetitors,enhanceImages,enhanceFullImages} from './report-ui.mjs?v=20260911-image-evidence';
+import {condenseRules,foldLongTables,condenseModuleDates} from './report-reading.mjs?v=20260911-reading';
 const modules=[['01','关键词作战总表'],['02','自然位标杆'],['03','否定词清单'],['04','竞对对比'],['05','图片与卖点诊断'],['06','广告诊断与优化']];
 const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text)n.textContent=text;return n;};
 export function moduleSource(fragment){
@@ -65,7 +66,7 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
     button.type='button';button.disabled=!box.value.trim();box.after(button);
     const status=el('p','secondary');status.setAttribute('role','status');button.after(status);
     button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(box.value);status.textContent='已复制';}catch{box.focus();box.select();status.textContent='自动复制不可用，已选中文本，请手动复制。';}});
-   });section.append(block);
+   });condenseModuleDates(block);condenseRules(block);foldLongTables(block);section.append(block);
   }
   else if(id==='04'&&competitors){
    const block=el('section','panel competitors-panel');block.append(...[...competitors.childNodes].map(n=>n.cloneNode(true)));
@@ -90,6 +91,7 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
    const block=el('section','panel ad-plan-panel');block.append(...[...adPlan.childNodes].map(n=>n.cloneNode(true)));
    if(!block.querySelector('[data-ad-mapping-status]')){const notice=el('p','secondary','待补投放映射；这是历史词诊断，尚未定位实际操作对象。');notice.setAttribute('data-ad-mapping-status','missing');block.querySelector('h2')?.after(notice);}
    block.querySelectorAll('table').forEach(table=>{table.className='report-table ad-plan-table';const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','广告诊断动作表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
+   condenseRules(block);
    block.querySelectorAll('details').forEach(d=>d.classList.add('report-details'));section.append(block);
   }
   else{const placeholder=el('section','module-placeholder panel');placeholder.append(el('span','module-placeholder-number',id),el('h2','',title),el('p','secondary','即将上线'));section.append(placeholder);}
