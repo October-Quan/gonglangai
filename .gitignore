@@ -16,3 +16,4 @@ id_ed25519*
 *.log
 node_modules/
 .DS_Store
+voc/local-preview/
