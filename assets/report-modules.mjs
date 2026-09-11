@@ -1,7 +1,7 @@
 import {enhanceShareBenchmarks,enhanceNegativeProducts} from './report-growth.mjs?v=20260911-apparel';
 import {enhanceOrganic,enhanceCompetitors,enhanceImages,enhanceFullImages} from './report-ui.mjs?v=20260911-apparel';
 import {condenseRules,foldLongTables,condenseModuleDates} from './report-reading.mjs?v=20260911-reading';
-const modules=[['01','关键词增长总表'],['02','关键词份额与标杆'],['03','否定词清单'],['04','竞对对比'],['05','图片与卖点诊断'],['06','广告诊断与优化']];
+const modules=[['01','关键词增长总表'],['02','自然位标杆'],['03','否定词清单'],['04','竞对对比'],['05','图片与卖点诊断'],['06','广告诊断与优化']];
 const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text)n.textContent=text;return n;};
 export function moduleSource(fragment){
  const markers=fragment.querySelectorAll('[data-report-format]');

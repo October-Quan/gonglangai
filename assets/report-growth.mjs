@@ -41,31 +41,26 @@ function product(p,{compact=false,leader=false}={}){
  return item;
 }
 export function enhanceShareBenchmarks(block,context){
- if(!context.size)return;
- const original=[...block.childNodes],root=make('div','growth-benchmarks');
- const heading=make('h2','','关键词份额与自然位标杆');
- root.append(heading,note('先看每个词的 ABA 点击份额最高商品，再对照自然位与商品图片，确定优先研究的 Listing。'),note('点击份额代表该关键词下的点击分配，不等于转化份额、商品自身流量依赖度，也不能单独证明详情页最符合需求。'),make('div','apparel-context','服装需求核对：款式与版型 · 面料与透视程度 · 穿着场景与季节 · 颜色与尺码变体'));
- root.append(fold('服装 Listing 应重点对照什么',[note('把搜索词中的款式、面料、版型、场景、颜色与商品主图、标题、五点逐一对照；再看尺码表、透视/内搭说明及模特上身图是否回答购买顾虑。'),note('颜色或尺码可能属于同款变体。当前子 ASIN 图片、父体评价及整份广告报表需分别核对，不能用一个子款图片直接判整个款式无关。')]));
- const filter=make('input','input growth-filter');filter.type='search';filter.placeholder='搜索关键词';filter.setAttribute('aria-label','筛选份额标杆关键词');root.append(filter);
- const list=make('div','growth-share-list');root.append(list);
- for(const item of context.values()){
-  const card=make('article','growth-share-row');card.dataset.growthKeyword=words(item.keyword);
-  const left=make('div','growth-word');left.append(make('h3','',item.keyword),note('周搜索量 '+item.weekly),note('ABA 周期 '+(item.period||'待核验')));
-  const self=make('div','growth-own-fact');self.append(make('span','','自己自然位'),make('strong','',item.ownRank),note('广告位 '+item.ownAd));
-  left.append(self,fold('自己的排名采集时间',[note(item.ownTime||'本次未取得') ]));
-  const right=make('div','growth-share-main'),caption=make('div','growth-leader');
-  if(item.leaders.length){caption.append(make('span','growth-leader-label',item.leaders.length>1?'点击份额并列最高':'点击份额最高'));for(const p of item.leaders)caption.append(photo(p.image,p.asin+' 份额标杆主图','growth-leader-photo'),link(p.asin),make('strong','',share(p.share)),p.own?make('span','own-label','自己'):make('span','',''));}
-  else caption.append(make('span','','最高份额待核验 · 前三数据不完整或比例异常'));
-  right.append(caption);
-  const bar=make('div','growth-share-bar');bar.setAttribute('role','img');bar.setAttribute('aria-label',item.top.map(p=>p.asin+' '+share(p.share)).join('；'));
-  if(item.complete){for(const [i,p] of item.top.entries()){const seg=make('span','growth-segment '+(p.own?'self':'tone-'+i));seg.style.width=(p.share*100)+'%';seg.title=p.asin+' · '+share(p.share);bar.append(seg);}const rest=make('span','growth-segment remainder');rest.style.width=Math.max(0,100-item.top.reduce((s,p)=>s+p.share*100,0))+'%';rest.title='其他商品点击份额';bar.append(rest);right.append(bar,note('按全词 100% 绘制；灰色为前三之外的点击份额。'));}
-  const cards=make('div','growth-top-three');for(const p of item.top)cards.append(product(p,{leader:item.leaders.includes(p)}));if(!item.top.length)cards.append(note('本词尚无可用 ABA 前三商品'));right.append(fold('查看 ABA 前三商品图片与自然位',[cards]));
-
-  card.append(left,right);list.append(card);
+ const table=block.querySelector('table');if(!table?.tBodies[0])return;
+ const style=make('link');style.rel='stylesheet';style.href=new URL('./report-organic.css?v=20260911-rank',import.meta.url).href;block.prepend(style);
+ block.querySelector('h2').textContent='自然位标杆';
+ const heading=make('h3','','逐词自然位对照'),list=make('div','rank-reference-list');
+ const rows=[...table.tBodies[0].rows];
+ for(const r of rows){
+  const c=r.cells,key=c[0].firstChild.textContent.trim(),own=lines(c[1])[0],ad=lines(c[2])[0],benchmark=c[3].textContent.match(/B0[A-Z0-9]{8}/)?.[0],best=lines(c[4])[0],gap=lines(c[5])[0];
+  const card=make('article','rank-reference-row');card.dataset.rankKeyword=words(key);
+  const label=make('div','rank-reference-word');label.append(make('strong','',key),note('差距 '+gap));
+  const facts=make('div','rank-reference-facts'),self=make('div','rank-reference-own'),rival=make('div','rank-reference-rival');
+  self.append(make('span','','我的自然位'),make('strong','',own),note('我的广告位 '+ad));
+  rival.append(photo(c[3].querySelector('img'),(benchmark||'标杆')+' 主图','rank-reference-photo'));
+  const info=make('div');info.append(make('span','','已抓竞对中的自然位标杆'),benchmark?link(benchmark):make('span','','—'),make('strong','','自然位 '+best));rival.append(info);facts.append(self,rival);card.append(label,facts);list.append(card);
+  c[1].classList.add('rank-own-cell');c[4].classList.add('rank-benchmark-cell');
  }
- const empty=note('没有匹配的关键词');empty.hidden=true;root.append(empty);
- filter.addEventListener('input',()=>{let count=0;for(const c of list.children){c.hidden=!c.dataset.growthKeyword.includes(words(filter.value));if(!c.hidden)count++;}empty.hidden=!!count;});
- root.append(fold('原自然位对照与来源（按位次选择的候选）',original));block.replaceChildren(root);block.classList.add('growth-organic');
+ const filter=make('input','input growth-filter');filter.type='search';filter.placeholder='搜索关键词';filter.setAttribute('aria-label','筛选自然位标杆关键词');
+ const empty=note('没有匹配的关键词');empty.hidden=true;
+ filter.addEventListener('input',()=>{let count=0;rows.forEach((r,i)=>{const match=list.children[i].dataset.rankKeyword.includes(words(filter.value));r.hidden=!match;list.children[i].hidden=!match;if(match)count++;});empty.hidden=!!count;});
+ const anchor=table.closest('.organic-scroll')||table;anchor.before(filter,heading,list,empty,make('h3','','自然位与差距明细'));
+ block.classList.add('rank-reference');
 }
 export function enhanceNegativeProducts(block,context){
  const seen=new Set(),covered=new Set();
