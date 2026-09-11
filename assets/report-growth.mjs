@@ -77,12 +77,12 @@ export function enhanceNegativeProducts(block,context){
    else{
     seen.add(key);const item=context.get(key);
     if(item?.top.length){covered.add(key);const cards=make('div','growth-negative-products');for(const p of item.top)cards.append(product(p,{compact:true,leader:item.leaders.includes(p)}));box.append(make('strong','growth-evidence-title','ABA 点击前三'),note(item.period||'周期待核验'),cards);}
-    else box.append(make('span','growth-missing','ABA 前三未查询'),note('暂用广告实绩与现有商品证据判断'));
+    else box.append(make('span','growth-missing','未进ABA排名'),note('本报告暂无 ABA 记录，尚未查询或未返回'));
    }
    cell.append(box);
   }
  }
- const info=make('div','apparel-context');info.append(make('strong','',`ABA 图片参考：${covered.size} / ${seen.size} 个文本候选词已有数据`),note('图片帮助核对款式、版型、面料与场景；不因颜色、尺码不同或点击无单就直接否定。未查询项继续展示原建议，不影响报告。'));
+ const info=make('div','apparel-context');info.append(make('strong','',`ABA 图片参考：${covered.size} / ${seen.size} 个文本候选词已有数据`),note('图片帮助核对款式、版型、面料与场景；不因颜色、尺码不同或点击无单就直接否定。“未进ABA排名”表示本报告暂无记录，不代表已确认全站未上榜；原建议继续展示。'));
  block.querySelector('h2')?.after(info);
  return {textKeywords:seen.size,covered:covered.size,missing:seen.size-covered.size};
 }
