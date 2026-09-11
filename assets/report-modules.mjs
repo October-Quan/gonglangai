@@ -10,6 +10,7 @@ export function moduleSource(fragment){
 }
 export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,competitors=null,images=null,adPlan=null){
  if(adPlan){
+  checkMappingPresentation(adPlan);
   const tables=[...adPlan.querySelectorAll('table')];
   if(tables.length!==2||tables.some(t=>t.querySelectorAll('thead th').length!==4||!t.tBodies[0]||[...t.tBodies[0].rows].some(r=>r.cells.length!==4))||tables[0].tBodies[0].rows.length+tables[1].tBodies[0].rows.length>20)throw new Error('广告诊断结构不完整，请联系管理员核验。');
   for(const [i,t] of tables.entries())for(const r of t.tBodies[0].rows){const action=r.cells[1].textContent.trim();if(!(i===1?['待我判']:['该停','该降','该观察','该守','该加']).includes(action)||(action==='该观察'&&['','—'].includes(r.cells[3].textContent.trim())))throw new Error('广告诊断动作或退出条件不完整。');}
@@ -82,6 +83,7 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
   }
   else if(id==='06'&&adPlan){
    const block=el('section','panel ad-plan-panel');block.append(...[...adPlan.childNodes].map(n=>n.cloneNode(true)));
+   if(!block.querySelector('[data-ad-mapping-status]')){const notice=el('p','secondary','待补投放映射；这是历史词诊断，尚未定位实际操作对象。');notice.setAttribute('data-ad-mapping-status','missing');block.querySelector('h2')?.after(notice);}
    block.querySelectorAll('table').forEach(table=>{table.className='report-table ad-plan-table';const scroll=el('div','organic-scroll');scroll.setAttribute('role','region');scroll.setAttribute('aria-label','广告诊断动作表，可左右滚动');scroll.tabIndex=0;table.before(scroll);scroll.append(table);});
    block.querySelectorAll('details').forEach(d=>d.className='report-details');section.append(block);
   }
@@ -91,4 +93,18 @@ export function mountModules(meta,panel,organic=null,thumbnail,negatives=null,co
   });
  }
  const heading=document.querySelector('.report-heading h1');if(heading)heading.textContent='Listing 增长诊断报告';
+}
+// Optional mapping presentation must not make an otherwise valid report unreadable.
+export function checkMappingPresentation(panel){
+ const banners=[...panel.querySelectorAll('[data-ad-mapping-status]')],rows=[...panel.querySelectorAll('[data-ad-mapping-row]')],details=[...panel.querySelectorAll('[data-ad-mapping-details]')];
+ if(!banners.length&&!rows.length&&!details.length)return;
+ const safeTags=new Set(['DIV','P','DETAILS','SUMMARY']);
+ let valid=banners.length===1&&['valid','missing','invalid'].includes(banners[0].getAttribute('data-ad-mapping-status'))&&!banners[0].closest('table');
+ const seen=new Set();
+ for(const node of [...banners,...rows])if([...node.querySelectorAll('*')].some(n=>!safeTags.has(n.tagName)))valid=false;
+ for(const node of rows){const cell=node.parentElement,row=cell?.parentElement,word=node.getAttribute('data-ad-mapping-row');if(cell?.tagName!=='TD'||row?.tagName!=='TR'||row.cells[2]!==cell||row.cells[0].textContent.trim()!==word||seen.has(word))valid=false;seen.add(word);}
+ for(const d of details)if(d.tagName!=='DETAILS'||d.getAttribute('data-ad-mapping-details')!=='true'||!d.closest('[data-ad-mapping-row]')||d.querySelectorAll('summary').length!==1)valid=false;
+ const dataRows=[...panel.querySelectorAll('tbody tr')].filter(r=>!r.closest('[data-ad-mapping-row]'));
+ if(rows.length!==dataRows.length)valid=false;
+ if(!valid){for(const n of [...banners,...rows,...details])n.remove();const notice=el('div');notice.setAttribute('data-ad-mapping-status','invalid');notice.append(el('p','','投放映射结构不完整，已拒绝附件；原诊断保留。'));panel.querySelector('h2')?.after(notice);}
 }
