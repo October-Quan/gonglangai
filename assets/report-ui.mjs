@@ -1,3 +1,4 @@
+import {readVisual,visualCell,benchmarkCell,ownVisualCards} from './report-visual.mjs?v=20260911-visual';
 // Presentation only. All statements and figures come from the validated report DOM.
 const make=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
 const copy=e=>e.cloneNode(true);
@@ -192,15 +193,17 @@ export function enhanceFullImages(block,competitors){
  }
  const names=[...stages[0].matrix.tBodies[0].rows].map(r=>text(r.cells[0]));
  if(stages.some(s=>!s.id||s.matrix.rows[0].cells.length!==3||s.matrix.tBodies[0].rows.length!==names.length||[...s.matrix.tBodies[0].rows].some((r,i)=>text(r.cells[0])!==names[i])))return;
+ const visual=readVisual(source);
  const original=[...source.childNodes],checklist=make('ol','ui-checklist'),heading=copy(source.querySelector('h2'));
  const featureRows=[...(featureTable?.tBodies[0]?.rows??[])];
  for(const name of names){
   const feature=featureRows.find(r=>lines(r.cells[0])[0]===name),li=make('li'),head=make('div','ui-check-head');
-  head.append(make('strong','',name),make('span','ui-source-chip','模型选择'));li.append(head);
-  const reason=feature?.cells[0].querySelector('details p');if(reason)li.append(make('p','',text(reason)));
+  const item=Array.isArray(visual?.checklist)?visual.checklist.find(f=>f?.id===names.indexOf(name)+1):null;
+  head.append(make('strong','',name));const sources=Array.isArray(item?.source_types)?item.source_types.filter(s=>['核心词意图','品类统计','商品事实归纳'].includes(s)):[];for(const label of sources.length?sources:['模型选择 · 来源见下文'])head.append(make('span','ui-source-chip',label));li.append(head);if(typeof item?.question==='string'&&item.question)li.append(make('p','',item.question));
+  const reason=feature?.cells[0].querySelector('details p');if(typeof item?.reason==='string'&&item.reason)li.append(make('p','',item.reason));else if(reason)li.append(make('p','',text(reason)));
   checklist.append(li);
  }
- const matrix=table(['购买要素',...stages.map((s,i)=>(i===0?'自己':'竞对 '+i)+' · '+s.id)],'ui-full-image-matrix');
+ const matrix=table(['购买要素',...stages.map((s,i)=>(i===0?'自己':'竞对 '+i)+' · '+s.id),'视觉标杆 / 自己的改法'],'ui-full-image-matrix');
  [...matrix.rows[0].cells].forEach((cell,i)=>{cell.scope='col';if(i===1)cell.classList.add('ui-own-column');});
  const photosRow=matrix.tBodies[0].insertRow();photosRow.append(make('th','','原图总览'));
  function imageEvidence(stage,ids,compact=false){
@@ -214,14 +217,16 @@ export function enhanceFullImages(block,competitors){
   return gallery;
  }
  stages.forEach((s,i)=>{const cell=make('td',i===0?'ui-own-column':'');cell.append(imageEvidence(s,[...s.pictures.keys()],true),make('p','ui-image-count',s.pictures.size+' 张已分析原图'));photosRow.append(cell);});
+ photosRow.append(make('td','ui-note','按每项购买要素比较表达；允许并列，不按销量排视觉名次。'));
  names.forEach((name,index)=>{
   const row=matrix.tBodies[0].insertRow(),label=make('th','ui-feature-name');label.scope='row';label.append(make('span','ui-feature-number',String(index+1)),make('strong','',name));row.append(label);
   stages.forEach((s,i)=>{const originalRow=s.matrix.tBodies[0].rows[index],ids=lines(originalRow.cells[2]),cell=make('td','ui-full-evidence'+(i===0?' ui-own-column':''));
-   cell.append(imageEvidence(s,ids),make('span','ui-analysis-label','豆包观察与建议'),make('p','ui-full-observation',text(originalRow.cells[1])));row.append(cell);
+   cell.append(imageEvidence(s,ids));visualCell(cell,visual,s.id,index+1);cell.append(fold('原观察与建议',[make('p','ui-full-observation',text(originalRow.cells[1]))]));row.append(cell);
   });
+  const benchmark=make('td','visual-benchmark');benchmarkCell(benchmark,visual,index+1,stages,photo);row.append(benchmark);
  });
  const summaries=make('div','ui-full-summaries');
  for(const s of stages){const summary=s.nodes.find(n=>n.tagName==='P');if(summary)summaries.append(fold(s.heading+' · 整体诊断',[copy(summary)]));}
- block.replaceChildren(heading,make('p','ui-subtitle',`${names.length} 项购买要素 · 自己与 ${stages.length-1} 家竞对 · ${stages.reduce((n,s)=>n+s.pictures.size,0)} 张真实图片`),make('h3','ui-section-title','买家下单前需要确认的 '+names.length+' 件事'),checklist,make('h3','ui-section-title','卖点 × 多方图片证据对比'),make('p','ui-note','每张缩略图对应本项引用的原图，点击图片可放大。图下保留豆包的观察与建议。'),scroll(matrix,'自己与竞对图片证据对比'),summaries,fold('完整分析与原始图片记录',original));
+ block.replaceChildren(heading,make('p','ui-subtitle',`${names.length} 项购买要素 · 自己与 ${stages.length-1} 家竞对 · ${stages.reduce((n,s)=>n+s.pictures.size,0)} 张真实图片`),make('h3','ui-section-title','买家下单前需要确认的 '+names.length+' 件事'),checklist,make('h3','ui-section-title','卖点 × 多方视觉表达对比'),make('p','ui-note','AI 模拟浏览判断：先看画面，再细看文字；不是实际人眼计时或转化测试。图片可放大。旧回执缺少新字段时明确显示未评估。'),scroll(matrix,'自己与竞对图片证据对比'),ownVisualCards(visual,stages[0],names,photo),summaries,fold('完整分析与原始图片记录',original));
  block.classList.add('ui-images','ui-full-images');
 }
