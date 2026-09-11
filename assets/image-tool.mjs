@@ -10,7 +10,7 @@ export function mountImageTool({api,page,humanError,refresh}){
   const [r,pilot]=await Promise.all([api.imageRun(task.id),api.imagePilot?.(task.id)]);if(active?.id!==task.id||!r)return;
   const sig=JSON.stringify([r,pilot]);if(sig===signature&&!card.hidden)return;signature=sig;card.hidden=false;
   card.replaceChildren(node('h3','',task.asin+' · 图片诊断 · '+names[r.stage]));
-  card.append(node('p','help','使用本任务已确认的购买标准和现有图片缓存；缺少差评与品类特征不阻塞。原竞对任务状态与账本保留。每步确认只运行本步，不会连续扣费。'));
+  card.append(node('p','help','使用本任务已确认的购买标准和现有图片缓存；缺少差评与品类特征不阻塞。原竞对任务状态与账本保留。费用由后台自动核算；各步内容复核后继续分析。'));
   if(r.report_url){const link=node('a','button quiet',r.state==='complete'||(r.state==='awaiting_review'&&!needsReview(r))?'查看本步图片诊断报告 →':'查看此前已发布报告 →'),url=new URL(page('report/'));url.searchParams.set('task',task.id);url.searchParams.set('view','images');link.href=url.href;link.target='_blank';link.rel='noopener';card.append(link);}
   async function act(fn){if(busy||failures>=2)return;busy=true;card.querySelectorAll('button').forEach(n=>n.disabled=true);try{await fn();failures=0;signature='';}catch(e){failures++;card.append(node('p','message error',humanError(e)+(failures>=2?' 已停止重复操作，请核验状态。':'')));}finally{busy=false;}if(!failures){await refresh();await open(task);}}
   function consent(text,buttonText,fn){const label=node('label','consent'),check=node('input');check.type='checkbox';label.append(check,node('span','',text));const button=node('button','button primary',buttonText);button.type='button';button.disabled=true;check.addEventListener('change',()=>button.disabled=!check.checked||busy||failures>=2);button.addEventListener('click',()=>{if(check.checked)act(fn);});card.append(label,button);}
@@ -31,24 +31,24 @@ export function mountImageTool({api,page,humanError,refresh}){
    if(q.retry_attempt===1)card.append(node('p','message','第1次请求返回 HTTP 400，未生成本步结果；以下是独立的第1次排错重试报价。首次账本保留、实扣待核对。本次仍只运行1次，失败后停止。'));
    if(q.provider==='volcengine_ark'){
     card.append(node('p','',`本步1次豆包请求，${q.image_count}张图片输入；模型 ${q.model}。`),node('p','help',`模型现金支出上限 ¥0，仅使用免费额度；本步保守预留 ${Number(q.free_token_allowance).toLocaleString('zh-CN')} tokens，输出上限 ${q.max_output_tokens} tokens（含思考），实际用量以返回及额度对账为准。`),node('p','help','执行前核验剩余额度和免费保护；不足则停止。失败不自动重试。结果先逐张原图复核，再发布正式报告。Sorftime与西柚新增调用0。'),node('p','help','正式报告沿用随机公开链接；OSS存储和访问费用另计，不包含在模型现金上限内。'),node('p','help','额度有效至 '+new Date(q.expires_at).toLocaleString('zh-CN')));
-    if(q.confirmed_at)card.append(node('p','message','本账号已确认本步免费额度范围，等待执行前核验。'));
+    if(q.confirmed_at)card.append(node('p','message','已排队，等待执行前核验。'));
     else if(!Number.isFinite(Date.parse(q.expires_at))||Date.parse(q.expires_at)<=Date.now())card.append(node('p','message error','本步额度已过期，尚未调用，请刷新。'));
-    else consent('我确认本步图片范围与免费额度使用，并同意复核后的报告通过随机公开链接提供。','确认本步免费额度并开始',()=>{if(Date.parse(q.expires_at)<=Date.now())throw new Error('额度已过期，请刷新');return api.confirmImageQuote(task.id,q.quote_version,q.stage);});
+    else card.append(node('p','message','后台自动核算并排队执行，无需再次确认额度。'));
    }else if(q.provider&&q.provider!=='deepseek')card.append(node('p','message error','本步模型服务商不受支持，请核验配置。'));
    else {
    const inline=q.transport==='inline-original-jpeg-v1';
    if(inline)card.append(node('p','help','本次直接传送已校验的原图数据，图片内容与编号不变。旧视觉模型名称由服务商当前 Flash 模型承接。'));
    const price=inline?'Sorftime与西柚新增调用0。按当前高峰输入2元/百万、输出8元/百万tokens及每图最多1024tokens保守预留，不计缓存优惠；实际依用量计费。失败保留原始结果，不自动重试。':'Sorftime与西柚新增调用0。此报价按原记录输入3元/百万、输出9元/百万tokens预留；实际价格以服务商账单为准。失败保留原始结果，不自动重试。';
    card.append(node('p','',`本步1次 DeepSeek 请求，${q.image_count} 次图片输入，最多预留 ¥${Number(q.deepseek_limit_yuan).toFixed(6)}。`),node('p','help',price),node('p','help','报告以随机公开链接发布，OSS本次预计低于¥0.01，持续存储和访问另计；没有新上传原件可清理，旧文件保留。'),node('p','help','额度有效至 '+new Date(q.expires_at).toLocaleString('zh-CN')));
-   if(q.confirmed_at)card.append(node('p','message','本账号已确认，等待后台执行本步。'));
-   else consent('我确认本步图片范围与额度，并同意通过随机公开链接提供报告。','确认本步额度并开始',()=>{if(Date.parse(q.expires_at)<=Date.now())throw new Error('额度已过期，请刷新');return api.confirmImageQuote(task.id,q.quote_version,q.stage);});
+   if(q.confirmed_at)card.append(node('p','message','已排队，等待后台执行本步。'));
+    else card.append(node('p','message','后台自动核算并排队执行，无需再次确认额度。'));
    }
   }else if(r.state==='awaiting_review'){
    const s=r.result_summary;card.append(node('p','',s?.groups?.map(g=>g.asin+'：读清 '+g.readable+'/'+g.total+' 张').join('；')||'本步结果已生成'));
    if(needsReview(r))card.append(node('p','message','本步已返回候选结果，正在逐张原图复核；复核完成并发布后才能确认继续。此前报告不代表本步已审核。'));
    else if(r.stage==='probe'&&!r.probe_ok)card.append(node('p','message error','单图未读清，后续请求已停止。请核验报告中的原因。'));
-   else consent('我已打开并核对本步图片、标签和结论，确认继续。',r.stage==='competitor_3'?'完成本次审核':'已核验，查看下一步额度',()=>api.reviewImages(task.id,r.stage,r.result_sha256));
-  }else card.append(node('p','message',r.state==='failed'?(pilot?'原完整图组对比已暂停：':'本步暂停：')+r.failure_code+'。原始结果和账本已保留，无自动重试。':r.state==='complete'?'五步结果已核验完成。':r.state==='running'?'正在分析本步图片，完成后等待审核。':'正在核验缓存并准备本步额度。'));
+   else consent('我已打开并核对本步图片、标签和结论，确认继续。',r.stage==='competitor_3'?'完成本次审核':'已核验，继续下一步',()=>api.reviewImages(task.id,r.stage,r.result_sha256));
+  }else card.append(node('p','message',r.state==='failed'?(pilot?'原完整图组对比已暂停：':'本步暂停：')+r.failure_code+'。原始结果和账本已保留，无自动重试。':r.state==='complete'?'五步结果已核验完成。':r.state==='running'?'正在分析本步图片，完成后等待审核。':'正在核验缓存并准备分析。'));
   const close=node('button','button quiet','收起');close.type='button';close.addEventListener('click',()=>{card.hidden=true;active=null;signature='';});card.append(close);if(scroll)card.scrollIntoView({behavior:'smooth',block:'start'});
  }
  return {open,refresh:async()=>{if(active&&!busy&&!card.hidden)await open(active);}};

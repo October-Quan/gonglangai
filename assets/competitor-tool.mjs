@@ -1,5 +1,5 @@
 const node=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text)n.textContent=text;return n;};
-export const competitorStates={awaiting_quote:'核验缓存中',quoted:'待确认取数额度',collecting:'正在获取竞对资料',awaiting_review:'待审核特征',review_submitted:'正在核算模型额度',model_quoted:'待确认模型额度',comparing:'正在对比',complete:'已完成',failed:'失败'};
+export const competitorStates={awaiting_quote:'核验缓存中',quoted:'取数排队中',collecting:'正在获取竞对资料',awaiting_review:'待审核特征',review_submitted:'正在核算模型额度',model_quoted:'模型分析排队中',comparing:'正在对比',complete:'已完成',failed:'失败'};
 export async function mountCompetitorTool({api,user,refresh,humanError}){
  if(!api.competitorAccess||!await api.competitorAccess())return null;
  const original=document.getElementById('task-form'),sources=await api.competitorSources(user.id);
@@ -20,8 +20,8 @@ export async function mountCompetitorTool({api,user,refresh,humanError}){
  add.addEventListener('click',()=>{if(list.children.length<5)addAsin();});
  for(let i=0;i<3;i++)addAsin();
  const keyLabel=node('label','label','核心关键词（选填）'),key=node('input','input');key.id='competitor-keyword';key.maxLength=120;key.placeholder='留空使用源报告流量第一词';keyLabel.htmlFor=key.id;
- const submit=node('button','button primary','核验缓存并查看额度'),msg=node('p','message');submit.type='submit';msg.setAttribute('role','status');
- form.append(sourceLabel,source,help,ownLabel,own,node('h3','','竞对名单 · 3～5家'),list,add,keyLabel,key,node('p','help','先确认商品与品类取数额度，再审核特征清单，最后确认模型额度后生成两张对比表。'),submit,msg);original.before(form);
+ const submit=node('button','button primary','提交并开始对比'),msg=node('p','message');submit.type='submit';msg.setAttribute('role','status');
+ form.append(sourceLabel,source,help,ownLabel,own,node('h3','','竞对名单 · 3～5家'),list,add,keyLabel,key,node('p','help','提交后自动获取商品与品类资料；审核特征清单后自动生成对比报告，无需再次确认额度。报告沿用随机公开链接。'),submit,msg);original.before(form);
  let draft=null,submitFailures=0;
  const draftKey='gonglangai-competitor-draft-v1';
  try{const stored=JSON.parse(sessionStorage.getItem(draftKey));if(stored?.user_id===user.id){draft=stored;submitFailures=stored.failures||0;msg.textContent='检测到未确认登记的竞对任务，重试沿用同一任务号。';submit.textContent='重试登记竞对任务';}}catch{}
@@ -44,17 +44,11 @@ export async function mountCompetitorTool({api,user,refresh,humanError}){
   if(['quoted','model_quoted'].includes(r.state)&&q){
    const first=r.state==='quoted';
    card.append(node('p','',first?`Sorftime 最多 ${q.sorftime_limit} 次额度：${q.product_calls} 份商品详情 + 1 次品类特征（5次额度）。`:`DeepSeek 最多 ¥${Number(q.deepseek_limit_yuan).toFixed(6)}：1次模型判断，${q.dimension_count} 个已确认维度。`));
-   card.append(node('p','help',first?`自己与竞对：${(q.asins||[]).join('、')}。核心词：${q.core_keyword||'待核验'}。西柚新增调用0；本段模型费用0，后续单独报价。源报告生成时间：${q.source_generated_at||'待核验'}。`:'本段不增加 Sorftime 或西柚调用。按高峰输入3元/百万tokens、输出9元/百万tokens预留；实际按调用量计费。'));
+   card.append(node('p','help',first?`自己与竞对：${(q.asins||[]).join('、')}。核心词：${q.core_keyword||'待核验'}。西柚新增调用0；本段模型费用0，后续自动核算模型费用。源报告生成时间：${q.source_generated_at||'待核验'}。`:'本段不增加 Sorftime 或西柚调用。按高峰输入3元/百万tokens、输出9元/百万tokens预留；实际按调用量计费。'));
    card.append(node('p','help','OSS本次生成预计低于¥0.01，后续存储与访问按实际用量计费。没有新上传原件可清理，源报告与缓存保留。'),node('p','help','本次额度有效至 '+new Date(q.expires_at).toLocaleString('zh-CN')));
-   if(q.confirmed_at)card.append(node('p','message','额度已由本账号确认，等待后台处理。'));
-   else{
-    const label=node('label','consent'),check=node('input');check.type='checkbox';label.append(check,node('span','','我确认本段范围与额度，并同意通过随机公开链接提供报告。'));
-    const button=node('button','button primary',first?'确认额度并获取资料':'确认额度并生成对比报告');button.type='button';button.disabled=true;
-    check.addEventListener('change',()=>button.disabled=!check.checked||busy||failures>=2||Date.parse(q.expires_at)<=Date.now());
-    button.addEventListener('click',()=>{if(check.checked)guarded(()=>api.confirmCompetitorQuote(task.id,q.quote_version,q.stage));});card.append(label,button);
-   }
+   card.append(node('p','message','后台自动处理，无需再次确认额度。'));
   }else if(r.state==='awaiting_review'&&r.proposal){
-   reviewHash=r.proposal.raw_sha256;card.append(node('p','',r.proposal.sample_stats),node('p','help',`共 ${r.proposal.items.length} 个特征，按销量占比降序。以下全部条目均需审核；缺少产品事实不应作为剔除理由。确认后清单冻结，再展示模型费用。`));
+   reviewHash=r.proposal.raw_sha256;card.append(node('p','',r.proposal.sample_stats),node('p','help',`共 ${r.proposal.items.length} 个特征，按销量占比降序。以下全部条目均需审核；缺少产品事实不应作为剔除理由。确认后清单冻结并自动开始模型分析。`));
    if(r.proposal.own_listing){const own=r.proposal.own_listing,details=node('details','report-details');details.open=true;details.append(node('summary','','自己的Listing依据'),node('p','',own.title||'标题待核验'),node('p','',own.bullets?.join('；')||'五点字段缺失，待核验'),node('p','',own.attributes?Object.entries(own.attributes).map(([k,v])=>k+'：'+v).join('；'):'属性待核验'));card.append(details);}
    const edits=[];
    for(const [i,f] of r.proposal.items.entries()){
@@ -63,7 +57,7 @@ export async function mountCompetitorTool({api,user,refresh,humanError}){
     group.append(title,node('p','help',`销量占比 ${f.monthly_sales_share}% · 商品占比 ${f.product_count_share}%`),node('p','help',f.description||'无额外说明'),select,reason);card.append(group);edits.push({id:f.id,select,reason});
    }
    const consent=node('label','consent'),check=node('input');check.type='checkbox';consent.append(check,node('span','','我已核对全部保留、缺口和剔除项，并确认各项理由。'));
-   const button=node('button','button primary','确认清洗清单，查看模型额度');button.type='button';button.disabled=true;check.addEventListener('change',()=>button.disabled=!check.checked||busy||failures>=2);
+   const button=node('button','button primary','确认清单并继续分析');button.type='button';button.disabled=true;check.addEventListener('change',()=>button.disabled=!check.checked||busy||failures>=2);
    button.addEventListener('click',()=>{if(check.checked)guarded(()=>api.reviewCompetitors(task.id,r.proposal,edits.map(e=>({id:e.id,decision:e.select.value,reason:e.reason.value.trim()}))));});card.append(consent,button);
   }else card.append(node('p','help',r.state==='failed'?'处理暂停：'+(r.failure_code||'请联系管理员核验'):r.state==='complete'?'报告已生成，请从任务列表查看。':'后台正在处理，可稍后刷新查看。'));
   const close=node('button','button quiet','收起');close.type='button';close.addEventListener('click',()=>{card.hidden=true;active=null;reviewHash=null;});card.append(close);if(scroll)card.scrollIntoView({behavior:'smooth',block:'start'});
@@ -71,8 +65,8 @@ export async function mountCompetitorTool({api,user,refresh,humanError}){
  form.addEventListener('submit',async e=>{
   e.preventDefault();if(submit.disabled||submitFailures>=2)return;
   if(!draft){const asins=[...list.querySelectorAll('input')].map(x=>x.value.trim().toUpperCase());if(!source.value||asins.some(a=>!/^B0[A-Z0-9]{8}$/.test(a)||a===own.value)||new Set(asins).size!==asins.length){msg.textContent='请选择源报告，并填入3～5个不同于自己的有效竞对ASIN。';return;}draft={id:crypto.randomUUID(),user_id:user.id,source_task_id:source.value,competitor_asins:asins,core_keyword:key.value.trim(),failures:0};}
-  lock(true);submit.disabled=true;sessionStorage.setItem(draftKey,JSON.stringify(draft));msg.textContent='正在登记复用任务，不调用付费服务…';
-  try{const task=await api.createCompetitorTask(draft);draft=null;submitFailures=0;sessionStorage.removeItem(draftKey);msg.textContent='已登记，等待缓存核验和本次费用提示。';await refresh();await open(task,true);}
+  lock(true);submit.disabled=true;sessionStorage.setItem(draftKey,JSON.stringify(draft));msg.textContent='正在提交竞对任务…';
+  try{const task=await api.createCompetitorTask(draft);draft=null;submitFailures=0;sessionStorage.removeItem(draftKey);msg.textContent='已提交，缓存核验通过后自动开始。';await refresh();await open(task,true);}
   catch(e){submitFailures++;draft.failures=submitFailures;sessionStorage.setItem(draftKey,JSON.stringify(draft));msg.textContent=humanError(e)+(submitFailures>=2?' 已停止重复登记，请核验任务号 '+draft.id:'；重试将沿用同一任务号。');submit.textContent='重试登记竞对任务';}
   finally{if(!draft)lock(false);submit.disabled=submitFailures>=2;}
  });

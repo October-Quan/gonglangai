@@ -1,42 +1,25 @@
 import {renderReport} from './report.mjs?v=20260911-report-ui';
-import {mountCompetitorTool,competitorStates} from './competitor-tool.mjs?v=20260910-images';
-import {mountImageTool} from './image-tool.mjs?v=20260910-apparel-scene';
+import {mountCompetitorTool,competitorStates} from './competitor-tool.mjs?v=20260911-submit-direct';
+import {mountImageTool} from './image-tool.mjs?v=20260911-submit-direct';
 let competitorUI=null,imageUI=null;
 const $=id=>document.getElementById(id);
 let api,page,preview,humanError,currentUser,taskOffset=0,taskTotal=0,refreshFailures=0,refreshing=false,poll,submitting=false,draft=null;
 const draftKey='gonglangai-pending-submission-v1';
-let quoteAccess=false,quoteTask=null,currentQuote=null,confirming=false,confirmFailures=0;
+let quoteAccess=false,quoteTask=null;
 async function showQuote(task,scroll=false){
- if(!task||confirming&&quoteTask?.id!==task.id)return;
- const changed=quoteTask?.id!==task.id;quoteTask=task;$('confirm-cost').disabled=true;$('cost-card').hidden=false;
- if(changed){currentQuote=null;confirmFailures=0;$('cost-consent').checked=false;$('delete-upload').checked=false;}
- $('cost-title').textContent=task.asin+' · 确认本次分析';
- try{
-  const q=await api.quote(task.id);if(quoteTask?.id!==task.id)return;
-  if(currentQuote?.quote_version!==q?.quote_version){$('cost-consent').checked=false;confirmFailures=0;}
-  currentQuote=q;$('close-cost').textContent=q?.confirmed_at?'收起':'稍后再说';
-  const ready=!!q&&!q.confirmed_at&&Date.parse(q.expires_at)>Date.now()&&task.status==='待处理';
-  $('cost-details').hidden=!q;$('cost-options').hidden=!ready;$('confirm-cost').hidden=!ready;
-  $('confirm-cost').disabled=!ready||confirming||!$('cost-consent').checked||confirmFailures>=2;
-  message('cost-message',task.status==='失败'?(task.failure_reason||'报表核验失败，请检查报表。'):q?.confirmed_at?'额度已确认，后台将自动处理。可在下方查看进度。':!q?'正在核验报表，通常约30秒。核验不调用付费分析服务，请稍后刷新。':!ready?'本次额度提示已过期，后台将重新核验，请稍后刷新。':'报表核验通过。点击确认后才开始消耗额度。',task.status==='失败');
-  if(q){
-   const s=q.input_summary||{};$('cost-source').textContent=`报表 ${s.row_count??'—'} 行 · ${s.start_date||'日期未提供'} 至 ${s.end_date||'日期未提供'} · ${s.currency||'币种列未提供，请确认原表为USD'}`;
-   $('cost-credits').textContent=q.credit_limit+' Credit';$('cost-yuan').textContent='¥'+Number(q.deepseek_limit_yuan).toFixed(2);
-   $('cost-expiry').textContent='本次额度提示有效至 '+date(q.expires_at)+'；实际按调用量扣减，不是固定收费。';
-  }
- }catch(e){$('confirm-cost').disabled=true;throw e;}
+ if(!task)return;quoteTask=task;$('cost-card').hidden=false;
+ $('cost-title').textContent=task.asin+' · 分析详情';
+ const q=await api.quote(task.id);if(quoteTask?.id!==task.id)return;
+ $('cost-details').hidden=!q;
+ message('cost-message',task.status==='失败'?(task.failure_reason||'报表核验失败，请检查报表。'):task.status==='已完成'?'分析已完成。':task.status==='进行中'?'正在分析，可在任务列表查看进度。':q?'报表核验通过，后台自动排队处理，无需再次确认。':'正在核验报表，核验通过后自动开始，无需再次确认。',task.status==='失败');
+ if(q){const s=q.input_summary||{};$('cost-source').textContent=`报表 ${s.row_count??'—'} 行 · ${s.start_date||'日期未提供'} 至 ${s.end_date||'日期未提供'} · ${s.currency||'币种列未提供'}`;
+ $('cost-credits').textContent=q.credit_limit+' Credit';$('cost-yuan').textContent='¥'+Number(q.deepseek_limit_yuan).toFixed(2);
+ $('cost-expiry').textContent='后台按实际调用量计费，并保留单次上限保护。';}
  if(scroll)$('cost-card').scrollIntoView({behavior:'smooth',block:'center'});
-}
-async function confirmCost(){
- if(confirming||confirmFailures>=2||!currentQuote||!$('cost-consent').checked)return;
- confirming=true;$('confirm-cost').disabled=true;$('close-cost').disabled=true;
- try{await api.confirmTask(currentQuote,$('delete-upload').checked);confirmFailures=0;await refreshTasks(true);await showQuote(quoteTask);}
- catch(e){confirmFailures++;message('cost-message',humanError(e)+(confirmFailures>=2?' 已停止重复确认，请联系管理员核验。':' 可刷新核对是否已确认；重试不会创建新任务。'),true);}
- finally{confirming=false;$('close-cost').disabled=false;$('confirm-cost').disabled=confirmFailures>=2||!!currentQuote?.confirmed_at||!$('cost-consent').checked;}
 }
 function message(id,text,error=false){const el=$(id);if(!el)return;el.textContent=text;el.classList.toggle('error',error);el.setAttribute('role',error?'alert':'status');}
 function saveDraft(){sessionStorage.setItem(draftKey,JSON.stringify(draft));}
-function finishDraft(){sessionStorage.removeItem(draftKey);draft=null;lockForm(false);$('task-form').reset();$('submit').textContent='上传并查看额度';}
+function finishDraft(){sessionStorage.removeItem(draftKey);draft=null;lockForm(false);$('task-form').reset();$('submit').textContent='提交并开始分析';}
 function lockForm(locked){$('asin').disabled=locked;$('file').disabled=locked;}
 function date(value){const d=new Date(value);return Number.isNaN(d.valueOf())?'时间待核验':new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(d);}
 function statusBadge(status){const span=document.createElement('span');span.className='badge '+({'待处理':'amber','进行中':'blue','已完成':'green','失败':'red'}[status]||'');const dot=document.createElement('i');dot.className='dot';span.append(dot,document.createTextNode(status));return span;}
@@ -49,8 +32,8 @@ async function refreshTasks(manual=false){
   for(const item of rows){const row=document.createElement('tr');for(const [i,value] of [date(item.created_at),item.asin,item.status,item.failure_reason||''].entries()){const td=document.createElement('td');if(i===2)td.append(statusBadge(value));else{td.textContent=value||'—';if(i===1)td.className='asin';if(i===3)td.className='reason';}row.append(td);}const action=document.createElement('td');
    if(item.status==='已完成'&&item.report_url){const link=document.createElement('a');const url=new URL(page('report/'));url.searchParams.set('task',item.id);link.href=url.href;link.textContent='查看报告 →';action.append(link);}
    else if(item.analysis_kind==='competitors'&&competitorUI){const run=competitorRuns.get(item.id);row.children[2].replaceChildren(statusBadge(competitorStates[run?.state]||item.status));const btn=document.createElement('button');btn.type='button';btn.className='button quiet';btn.textContent='查看竞对分析 →';btn.addEventListener('click',()=>competitorUI.open(item,true).catch(e=>message('list-message',humanError(e),true)));action.append(btn);}
-   else if(item.status==='待处理'&&quoteAccess){const q=quotes.get(item.id);row.children[2].replaceChildren(statusBadge(q?.confirmed_at?'已确认 · 排队中':q?'待确认额度':'核验报表中'));const btn=document.createElement('button');btn.type='button';btn.className='button quiet';btn.textContent=q?.confirmed_at?'查看额度':'确认额度 →';btn.addEventListener('click',()=>showQuote(item,true).catch(e=>message('cost-message',humanError(e),true)));action.append(btn);}
-   else action.textContent=item.status==='进行中'?'处理中':item.status==='待处理'?'尚未开通自动处理':'—';if(imageUI&&imageRuns.has(item.id)){const btn=document.createElement('button');btn.type='button';btn.className='button quiet';btn.textContent='图片诊断／额度 →';btn.addEventListener('click',()=>imageUI.open(item,true).catch(e=>message('list-message',humanError(e),true)));action.append(btn);}row.append(action);$('tasks').append(row);
+   else if(item.status==='待处理'&&quoteAccess){const q=quotes.get(item.id);row.children[2].replaceChildren(statusBadge(q?'排队中':'核验报表中'));const btn=document.createElement('button');btn.type='button';btn.className='button quiet';btn.textContent='查看进度 →';btn.addEventListener('click',()=>showQuote(item,true).catch(e=>message('cost-message',humanError(e),true)));action.append(btn);}
+   else action.textContent=item.status==='进行中'?'处理中':item.status==='待处理'?'尚未开通自动处理':'—';if(imageUI&&imageRuns.has(item.id)){const btn=document.createElement('button');btn.type='button';btn.className='button quiet';btn.textContent='图片诊断 →';btn.addEventListener('click',()=>imageUI.open(item,true).catch(e=>message('list-message',humanError(e),true)));action.append(btn);}row.append(action);$('tasks').append(row);
   }
   $('empty').hidden=rows.length>0;$('task-count').textContent=`共 ${taskTotal} 个任务`;$('page-number').textContent=`第 ${Math.floor(taskOffset/8)+1} 页`;$('previous').disabled=taskOffset===0;$('next').disabled=taskOffset+8>=taskTotal;
   $('updated').textContent='更新于 '+new Intl.DateTimeFormat('zh-CN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());message('list-message','');refreshFailures=0;
@@ -76,7 +59,7 @@ async function submitTask(event){
   message('submit-message','报表已上传，正在登记任务…');draft.attempts++;saveDraft();
   const existing=await api.task(draft.row.id,currentUser.id);
   if(!existing)await api.insert(draft.row);
-  const submitted={...draft.row,status:'待处理'};finishDraft();message('submit-message',preview?'预览提交成功：未上传文件，也未创建真实任务。':'上传成功，请在下方查看额度并确认开始。');taskOffset=0;await refreshTasks();if(quoteAccess)await showQuote(submitted,true).catch(e=>message('cost-message',humanError(e),true));
+  const submitted={...draft.row,status:'待处理'};finishDraft();message('submit-message',preview?'预览提交成功：未上传文件，也未创建真实任务。':'提交成功，后台将自动核验并开始分析。可关闭页面，稍后查看进度。');taskOffset=0;await refreshTasks();
  }catch(error){
   message('submit-message',humanError(error)+(draft?' 报表已上传，任务登记尚未确认；重试会核对并沿用同一任务号。':' 报表上传未确认，未登记任务。'),true);
   if(draft)$('submit').textContent='重试登记任务';
@@ -86,9 +69,7 @@ async function tool(){
  if(api.imageRun)imageUI=mountImageTool({api,page,humanError,refresh:()=>refreshTasks(true)});
  quoteAccess=await api.quoteAccess();
  competitorUI=await mountCompetitorTool({api,user:currentUser,refresh:()=>refreshTasks(true),humanError});
- $('confirm-cost').addEventListener('click',confirmCost);
- $('cost-consent').addEventListener('change',()=>{$('confirm-cost').disabled=confirming||confirmFailures>=2||!$('cost-consent').checked||!currentQuote||!!currentQuote.confirmed_at||Date.parse(currentQuote.expires_at)<=Date.now();});
- $('close-cost').addEventListener('click',()=>{$('cost-card').hidden=true;quoteTask=null;currentQuote=null;});
+ $('close-cost').addEventListener('click',()=>{$('cost-card').hidden=true;quoteTask=null;});
  $('asin').addEventListener('blur',validateAsin);$('file').addEventListener('change',validateFile);$('task-form').addEventListener('submit',submitTask);
  $('refresh').addEventListener('click',()=>refreshTasks(true));$('previous').addEventListener('click',()=>{taskOffset=Math.max(0,taskOffset-8);refreshTasks(true);});$('next').addEventListener('click',()=>{if(taskOffset+8<taskTotal){taskOffset+=8;refreshTasks(true);}});
  try{const saved=JSON.parse(sessionStorage.getItem(draftKey));if(saved?.row?.user_id===currentUser.id){draft=saved;lockForm(true);$('asin').value=draft.row.asin;$('submit').textContent='重试登记任务';$('submit').disabled=draft.attempts>=2;message('submit-message','检测到上次尚未确认登记的任务，重试将核对同一任务号，避免重复提交。');}}catch{}
