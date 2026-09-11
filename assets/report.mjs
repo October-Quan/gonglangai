@@ -32,7 +32,7 @@ function thumbnail(source){
 }
 export function renderReport(html,host,meta,note,ownAsin=''){
  const fragment=window.DOMPurify.sanitize(html,{RETURN_DOM_FRAGMENT:true,ALLOWED_TAGS:['h1','h2','h3','textarea','details','summary','p','div','table','thead','tbody','tr','th','td','br','hr','img'],ALLOWED_ATTR:['src','alt','width','height','scope','data-report-format','data-full-analysis','data-module-panel','data-module-state','data-negative-copy','data-competitor-partial','data-competitor-qualitative','data-image-table','data-image-card','data-organic-candidates','data-organic-product','data-ad-mapping-status','data-ad-mapping-row','data-ad-mapping-details','readonly','aria-label'],ALLOW_DATA_ATTR:false,FORBID_TAGS:['style','script','iframe','form','input','svg','math']});
- const master=moduleSource(fragment),sourceRoot=master??fragment;
+ const master=moduleSource(fragment),sourceRoot=master??fragment,fullReport=!!fragment.querySelector('[data-full-analysis="full-analysis-v1"]');
  const source=sourceRoot.querySelector('table');
  if(!source||source.querySelectorAll('thead th').length!==12||!source.tBodies.length||[...source.tBodies[0].rows].some(r=>r.cells.length!==12))throw new Error('报告结构无法识别，请联系管理员核验。');
  const paragraphs=[...sourceRoot.querySelectorAll('p')];
@@ -61,7 +61,8 @@ export function renderReport(html,host,meta,note,ownAsin=''){
   const fields=Object.fromEntries(data[10].filter(line=>line.includes('：')).map(line=>{const index=line.indexOf('：');return [line.slice(0,index),line.slice(index+1)];}));
   const assessment=assessOpportunity({...adFacts(fields,!c[10].textContent.includes('无投放')),rank:parseMetric(data[8][0]),ownTop3:!!topOwn});
   tr.dataset.candidate=String(assessment.candidate);
-  const targetBadge=el('span','badge '+assessment.tone,assessment.label);word.children[1].replaceWith(targetBadge);
+  const modelAction=fullReport?c[11].textContent.match(/(?:DeepSeek Flash 分析：)?(该停|该降|该观察|该守|该加|待补资料)：/)?.[1]:null;
+  const targetBadge=el('span','badge '+assessment.tone,modelAction??assessment.label);word.children[1].replaceWith(targetBadge);
   if(category==='待核验'&&!assessment.label.includes('核验'))word.append(badge('待核验'));
   if(assessment.candidate)tr.classList.add('push-candidate');
   if(topOwn)word.append(el('span','fact-tag','✓ 自己在点击前三'));
@@ -97,8 +98,9 @@ export function renderReport(html,host,meta,note,ownAsin=''){
    item.append(el('div','share-value',formatClickShare(raw)),el('div','secondary share-raw','原值 '+(raw||'待核验')));grid.append(item);
   }
   top.append(grid,el('div','secondary share-note','点击份额 · 精度以接口原值为准'));
-  const advice=el('td','advice-cell');const title=el('div','advice-title');title.append(el('span','badge '+assessment.tone,assessment.label),el('span','secondary','按当前目标判断'));advice.append(title,el('p','advice-copy',assessment.action));
-  advice.append(details(versionedReport?'生成时判断与补充（targets-v1）':'生成时建议（历史规则）',[(versionedReport?'分组依据：':'原分类：')+category,c[11].textContent]));
+  const advice=el('td','advice-cell');const title=el('div','advice-title');title.append(el('span','badge '+assessment.tone,modelAction??assessment.label),el('span','secondary',fullReport?'DeepSeek Flash 分析':'按当前目标判断'));
+  advice.append(title,el('p','advice-copy',fullReport?c[11].textContent.replace(/^DeepSeek Flash 分析：/,''):assessment.action));
+  advice.append(fullReport?details('数值目标核对',[assessment.label,assessment.action]):details(versionedReport?'生成时判断与补充（targets-v1）':'生成时建议（历史规则）',[(versionedReport?'分组依据：':'原分类：')+category,c[11].textContent]));
   tr.append(word,ads,ranks,heat,competition,top,advice);body.append(tr);
  }
  const count=[...body.rows].filter(row=>row.dataset.candidate==='true').length;
