@@ -3,3 +3,19 @@
 [data-voc="submit"] .panel{padding:24px;margin-bottom:24px}.voc-grid>div{min-width:0}.voc-grid fieldset{border:0;padding:0;margin:20px 0 0;min-width:0}.voc-grid legend{padding:0}.voc-options{margin-bottom:8px}@media(max-width:700px){[data-voc="submit"] .panel{padding:18px}.voc-grid{gap:20px}}
 
 .voc-replay{margin-top:24px;padding-top:20px;border-top:1px solid #e5ebf4}
+
+/* 新建任务表单对齐：统一垂直节奏、控件高度与单选样式。 */
+[data-voc="submit"] .voc-grid{align-items:start;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:36px}
+[data-voc="submit"] .voc-row{margin:12px 0 0}
+[data-voc="submit"] .voc-row .button{align-self:stretch;min-height:0;white-space:nowrap}
+[data-voc="submit"] #add-asin{margin-top:12px}
+[data-voc="submit"] .voc-grid fieldset{margin:18px 0 0}
+[data-voc="submit"] .voc-grid .label{margin-bottom:8px}
+[data-voc="submit"] .voc-options{margin:10px 0 0;gap:18px}
+[data-voc="submit"] .voc-options label{gap:8px;line-height:20px}
+[data-voc="submit"] .voc-options input[type=radio]{width:16px;height:16px;margin:0;flex:none;accent-color:var(--blue)}
+[data-voc="submit"] form>.help{margin:22px 0 0}
+[data-voc="submit"] .submit-row{margin-top:14px}
+[data-voc="submit"] .voc-replay{margin-top:26px}
+[data-voc="submit"] .voc-replay .help{margin-top:8px}
+@media(max-width:700px){[data-voc="submit"] .voc-grid{gap:22px}[data-voc="submit"] .voc-row{margin-top:10px}[data-voc="submit"] .voc-grid fieldset{margin-top:16px}}
