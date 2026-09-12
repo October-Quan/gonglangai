@@ -1,61 +1,5 @@
-// 双语标签层：英文为主、中文为辅。评论是英文的美国站业务，看板不应整页中文。
-// 键为中文原文，值为英文；渲染时自动在英文后补上弱化排版的中文。
-
-// 固定 UI 文案
-export const UI = {
- '从标签，回到买家的原话': "From Tags, Back to Buyers' Own Words",
- '用户洞察 · 八维评论分析': 'Voice of Customer · 8-Dimension Review Analysis',
- '美国站 · 含变体评论': 'US Marketplace · Includes Variant Reviews',
- '唯一评论': 'Unique Reviews',
- '样本星级分布': 'Sample Star Distribution',
- '八维标签看板': '8-Dimension Tag Board',
- '评论明细': 'Review Details',
- '综合行动建议': 'Action Recommendations',
- '用户旅程': 'Customer Journey',
- '人群构成': 'Audience Mix',
- '产品定义方向': 'Product Direction',
- '亚马逊视觉策划': 'Amazon Visual Planning',
- '原声': 'Verbatim',
- '证据': 'Evidence',
- '优先级': 'Priority',
- '取消筛选': 'Clear Filter',
- '样本中没有明确提及': 'No clear mentions in this sample',
- '未知': 'Unknown',
- '来源未知': 'Unknown Source',
- '查看原文': 'View Original',
- '星级': 'Stars',
- '日期': 'Date',
- '来源 ASIN': 'Source ASIN',
- '标题': 'Title',
- '正文': 'Review',
- '命中标签': 'Matched Tags',
- '主图': 'Main Image',
- '场景图': 'Lifestyle Image',
- '细节图': 'Detail Image',
- '尺寸图': 'Size Chart',
- '视频截帧': 'Video Frames',
- 'A+页面': 'A+ Content',
- '对比图': 'Comparison Image',
- '占比 = 标签次数 ÷ 本维度标签总次数': 'Share = tag mentions ÷ total mentions in this dimension',
- '保留原文、日期和来源 ASIN；宽表格可横向滚动。': 'Original text, date and source ASIN are kept; the wide table scrolls horizontally.',
- '基于本次评论样本的建议；优先级是分析判断，不代表已验证的销量提升。': 'Based on this review sample only; priorities are analytical judgment, not proven sales lift.',
- '主标签显示同义组总次数；展开按钮查看子标签。主标签筛整组、子标签筛原标签，再点取消。组次数可重复计入同一评论，明细按评论去重。':
-  'Main tags show the combined count of a synonym group; use the expand button for sub-tags. A main tag filters the whole group, a sub-tag filters the raw tag, click again to clear. Group counts may count one review more than once; the detail table de-duplicates by review.',
- '本次分析来自 Sorftime 返回的评论样本，未达到每个 ASIN 200 条的目标，不代表完整历史评论。来源变体逐条保留；Amazon 原文交叉核验待补。标签已按留底原文复核。':
-  'This analysis uses the review sample returned by Sorftime; it falls short of the 200-review target per ASIN and does not represent full review history. Source variants are kept per review; cross-checking against Amazon originals is still pending. Tags were re-checked against the retained source text.',
-};
-
-// 固定八维度
-export const DIMENSIONS = {
- '功能价值': 'Functional Value',
- '产品使用对象': 'Product User',
- '体验价值': 'Experience Value',
- '场景': 'Usage Scene',
- '保障价值': 'Trust & Assurance',
- '人群': 'Audience',
- '购买动机': 'Purchase Motivation',
- '未满足需求': 'Unmet Needs',
-};
+// 评论标签英译词典：评论原文是英文，看板上的特征标签用英文表达更贴近买家原话。
+// 中文作为弱化小字跟在英文后面，便于对照；网站框架（标题、表头、按钮）保持中文，不在此处理。
 
 // 标签词典（当前样本全量 + 常见服饰类目通用词）
 export const TAGS = {
@@ -105,7 +49,7 @@ export const TAGS = {
  '易勾挂杂物': 'Catches on Objects', '易勾破': 'Tears from Snags', '易撕裂损坏': 'Rips Easily',
 };
 
-// 未命中词典时的词根兜底（只翻译能确定的部分，凑不齐就保留中文）
+// 未命中词典时的词根兜底：只用于 6 字以内的短标签，凑不齐就保留中文
 export const GLOSSARY = [
  ['透气', 'Breathable'], ['弹力', 'Stretchy'], ['弹性', 'Elasticity'],
  ['面料', 'Fabric'], ['材质', 'Material'], ['版型', 'Fit'], ['衣长', 'Length'],
