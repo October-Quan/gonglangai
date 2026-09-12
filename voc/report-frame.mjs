@@ -80,6 +80,7 @@ const tagsEnJs = `
  }
  function one(el){
   if(!el||el.dataset.vocEn)return;
+  if(el.querySelector&&el.querySelector('.voc-zh'))return;
   var s=(el.textContent||'').trim();
   if(!s||!CJK.test(s))return;
   var e=en(s);
@@ -130,7 +131,7 @@ const transJs = `
     }
    }
    var q=card.querySelector('blockquote');
-   if(q&&!q.dataset.vocTrans){
+   if(q&&!q.dataset.vocTrans&&!q.querySelector('.voc-trans')){
     var t=zhOf(q.textContent);
     if(t){mark(q);var s=document.createElement('span');s.className='voc-trans';s.textContent=t;q.appendChild(s);}
    }
@@ -139,7 +140,7 @@ const transJs = `
  // 2) 评论明细：标题与正文原文保留，下方附中文译文
  function tableRows(){
   document.querySelectorAll('td.row-title, td.body').forEach(function(td){
-   if(td.dataset.vocTrans)return;
+   if(td.dataset.vocTrans||td.querySelector('.voc-trans'))return;
    var t=zhOf(td.textContent);
    if(!t)return;
    mark(td);
@@ -165,7 +166,9 @@ export async function mountReport(frame, html) {
  if (executable.length !== 1) throw Error('REPORT_SCRIPT');
  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(executable[0].textContent));
  const hash = btoa(String.fromCharCode(...new Uint8Array(bytes)));
- if (![rendererHash, 'ACK+wDQFzOMFU+iHSXMC/KE+Lv04yVfql1PitiY2QMk=', 'u97e7lj3LuYeXUJ9+qIfPF67sg9lEnghZfzDTRSk/U8='].includes(hash)) throw Error('REPORT_SCRIPT');
+ // 末位是生成端双语补丁后的渲染器（2026-09-12 起新报告）。
+ if (![rendererHash, 'ACK+wDQFzOMFU+iHSXMC/KE+Lv04yVfql1PitiY2QMk=', 'u97e7lj3LuYeXUJ9+qIfPF67sg9lEnghZfzDTRSk/U8=',
+       '8kNMDopsLMXS9G7fCY8XjyXn8MelGzrkDw+exmmEYNA='].includes(hash)) throw Error('REPORT_SCRIPT');
  // 校验通过后再注入增强，不影响对原始渲染脚本的哈希校验。
  const style = doc.createElement('style');
  style.textContent = foldCss + tagsEnCss + transCss;
