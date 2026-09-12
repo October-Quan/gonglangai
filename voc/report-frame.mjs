@@ -29,6 +29,46 @@ const transCss = `
 td.row-title .voc-trans{margin-top:5px}
 blockquote .voc-trans{margin-top:7px}
 `;
+// 星级分布图表层：把"5 星 · 59"式胶囊换成水平条形图，含条数与占比。
+const chartCss = `
+.voc-rating{display:flex;flex-direction:column;gap:5px;min-width:230px}
+.voc-rating-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.voc-rating-star{width:34px;flex:none;color:#4a5b74;font-weight:600;text-align:right}
+.voc-rating-track{flex:1;height:10px;border-radius:5px;background:#edf1f7;overflow:hidden}
+.voc-rating-bar{display:block;height:100%;border-radius:5px;min-width:2px;transition:width .5s ease}
+.voc-rating-num{width:76px;flex:none;color:#5d6f8c;font-variant-numeric:tabular-nums;white-space:nowrap}
+`;
+const starsJs = `
+(function(){
+ var COLORS={5:'#16a34a',4:'#84cc16',3:'#eab308',2:'#f97316',1:'#ef4444'};
+ var el=document.getElementById('stars');
+ if(!el||el.dataset.vocChart||el.querySelector('.voc-rating'))return;
+ var stars=null,total=0;
+ try{
+  var raw=JSON.parse(document.querySelector('script[type="application/json"][id="data"]').textContent);
+  stars=raw.stars||[];total=stars.reduce(function(s,x){return s+(x.count||0);},0);
+ }catch(e){return;}
+ if(!stars.length||!total)return;
+ var wrap=document.createElement('div');
+ wrap.className='voc-rating';
+ stars.forEach(function(x){
+  var pct=Math.round((x.count||0)/total*1000)/10;
+  var row=document.createElement('div');row.className='voc-rating-row';
+  var lab=document.createElement('span');lab.className='voc-rating-star';lab.textContent=x.star+'★';
+  var track=document.createElement('span');track.className='voc-rating-track';
+  var bar=document.createElement('span');bar.className='voc-rating-bar';
+  bar.style.width=Math.max((x.count||0)/total*100,1.5)+'%';
+  bar.style.background=COLORS[x.star]||'#4879ce';
+  track.appendChild(bar);
+  var num=document.createElement('span');num.className='voc-rating-num';num.textContent=(x.count||0)+' 条 · '+pct+'%';
+  row.append(lab,track,num);
+  wrap.appendChild(row);
+ });
+ el.dataset.vocChart='1';
+ el.textContent='';
+ el.appendChild(wrap);
+})();
+`;
 const foldJs = `
 (function(){
  var LIMIT=${FOLD_LIMIT};
@@ -171,7 +211,7 @@ export async function mountReport(frame, html) {
        '8kNMDopsLMXS9G7fCY8XjyXn8MelGzrkDw+exmmEYNA='].includes(hash)) throw Error('REPORT_SCRIPT');
  // 校验通过后再注入增强，不影响对原始渲染脚本的哈希校验。
  const style = doc.createElement('style');
- style.textContent = foldCss + tagsEnCss + transCss;
+ style.textContent = foldCss + tagsEnCss + transCss + chartCss;
  doc.head.appendChild(style);
  const fold = doc.createElement('script');
  fold.textContent = foldJs;
@@ -182,6 +222,9 @@ export async function mountReport(frame, html) {
  const trans = doc.createElement('script');
  trans.textContent = transJs;
  doc.body.appendChild(trans);
+ const stars = doc.createElement('script');
+ stars.textContent = starsJs;
+ doc.body.appendChild(stars);
  frame.srcdoc = '<!DOCTYPE html>' + doc.documentElement.outerHTML;
  frame.hidden = false;
 }
