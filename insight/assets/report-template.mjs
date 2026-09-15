@@ -224,20 +224,27 @@ function stars(n) {
   return `<span class="stars st${v}">${"★".repeat(v)}${v < 5 ? "" : ""}</span>`;
 }
 
-function reviewCard(e) {
+function sourceText(text){return esc(String(text??'')).replace(/&lt;br\s*\/?&gt;/gi,'<br>').replace(/&amp;amp;/g,'&amp;').replace(/&amp;quot;/g,'&quot;').replace(/&amp;#39;/g,'&#39;');}
+function quote(e,topic=''){
+ const text=String(e.text||'');if(text.length<=250)return sourceText(text);
+ const keys=/尺码|腰|臀|大小|合身/.test(topic)?/size|waist|fit|large|small|stretch/i:/短|长度|覆盖|走光/.test(topic)?/short|cover|length|cheek|butt/i:/薄|透|面料|质感/.test(topic)?/thin|fabric|material|opaque|see.through|quality/i:/叠穿|裙|磨腿/.test(topic)?/dress|skirt|under|rub|layer/i:/场景|派对|音乐节/.test(topic)?/festival|rave|party/i:/蕾丝|荷叶|造型/.test(topic)?/lace|ruffle|cute|layer/i:/comfortable|soft|love|cute|fit/i;
+ const sentences=[...text.matchAll(/[^.!?\n]+[.!?]?/g)];const match=sentences.find(m=>keys.test(m[0]))||sentences[0];let excerpt=match?.[0]?.trim()||text;if(excerpt.length>260)excerpt=excerpt.slice(0,260);
+ return sourceText(excerpt)+(excerpt!==text?'<details class="source-full"><summary>查看这条引用原文</summary>'+sourceText(text)+'</details>':'');
+}
+function reviewCard(e,topic='') {
   const badges = [
     e.vendor ? tag(e.vendor, "blue") : "",
     e.photo ? tag("含买家实拍图", "gray") : "",
   ].filter(Boolean).join("");
   return `<div class="rev">
   <div class="h"><span class="who">${esc(maskAuthor(e.author))}</span>${stars(e.star)}<span class="sku">${esc(e.sku || "")}</span>${badges}</div>
-  <div class="q">${plain(e.text)}</div>
+  <div class="q">${quote(e,topic)}</div>
   ${e.comment ? `<div class="cn">→ ${md(e.comment)}</div>` : ""}
 </div>`;
 }
 
-function evidenceList(list) {
-  return (list || []).map(reviewCard).join("\n");
+function evidenceList(list,topic='') {
+  return (list || []).map(e=>reviewCard(e,topic)).join("\n");
 }
 
 function num(v, dash = "—") {
@@ -305,7 +312,7 @@ function chDim1(d) {
   <td class="num">${esc(it.idx)}</td>
   <td><strong>${md(it.point)}</strong></td>
   <td>${md(it.buyerValue)}</td>
-  <td>${(it.evidence || []).map((e) => `<em>${plain(e.text)}</em> —— ${esc(maskAuthor(e.author))}, ${esc(e.star)}★`).join("<br>")}</td>
+  <td>${(it.evidence || []).map((e) => `<em>${quote(e,it.point)}</em> —— ${esc(maskAuthor(e.author))}, ${esc(e.star)}★`).join("<br>")}</td>
 </tr>`).join("");
   return `<h2 id="d1"><span class="n">02</span>维度一 · 产品核心卖点提炼</h2>
 <p>${md(d.intro)}</p>
@@ -317,14 +324,14 @@ ${d.takeaway ? `<div class="callout good"><p class="t">${esc(d.takeaway.title)}<
 
 function chDim2(d) {
   const posGroups = (d.positive?.groups || []).map((g) =>
-    `<h4>${md(g.title)}</h4>\n${evidenceList(g.evidence)}`).join("\n");
+    `<h4>${md(g.title)}</h4>\n${evidenceList(g.evidence,g.title)}`).join("\n");
   const negItems = (d.negative?.items || []).map((it) => {
     const contrast = (it.contrast || []).length
-      ? `<p class="mini">正向对照：${it.contrast.map((c) => `<em>${plain(c.text)}</em>（${esc(maskAuthor(c.author))}, ${esc(c.star)}★, ${esc(c.sku)}）`).join("；")}</p>`
+      ? `<p class="mini">正向对照：${it.contrast.map((c) => `<em>${quote(c,it.title)}</em>（${esc(maskAuthor(c.author))}, ${esc(c.star)}★, ${esc(c.sku)}）`).join("；")}</p>`
       : "";
     return `<h4>${esc(it.severity)} ${md(it.title)} ${tag(it.scope || "", it.scopeTone || "red")}</h4>
 <p>${md(it.desc)}</p>
-${evidenceList(it.evidence)}
+${evidenceList(it.evidence,it.title)}
 ${contrast}`;
   }).join("\n");
   return `<h2 id="d2"><span class="n">03</span>维度二 · 用户真实反馈总结</h2>
@@ -389,7 +396,7 @@ function chDim4(d) {
   <td><strong>${md(r.name)}</strong>${r.en ? `<br><span class="mini">${esc(r.en)}</span>` : ""}</td>
   <td class="num"><strong>${esc(r.mentions)}</strong><br>${esc(r.share)}</td>
   <td>${tag(r.confidence, r.confidenceTone)}</td>
-  <td>${(r.evidence || []).map((e) => `<em>${plain(e.text)}</em> —— ${esc(maskAuthor(e.author))}, ${esc(e.star)}★, ${esc(e.sku)}`).join("<br>")}${r.notes ? `<br>${md(r.notes)}` : ""}</td>
+  <td>${(r.evidence || []).map((e) => `<em>${quote(e,r.name||r.dimension)}</em> —— ${esc(maskAuthor(e.author))}, ${esc(e.star)}★, ${esc(e.sku)}`).join("<br>")}${r.notes ? `<br>${md(r.notes)}` : ""}</td>
 </tr>`).join("");
   return `<h2 id="d4"><span class="n">05</span>维度四 · 典型使用场景梳理</h2>
 <p class="mini">${md(d.intro)}</p>
@@ -403,9 +410,9 @@ function chDim5(d) {
   const rows = (d.rows || []).map((r) => `<tr>
   <td><strong>${md(r.dimension)}</strong><br>${tag(r.stage, r.stageTone)}${r.mentions ? `<br><span class="mini">${esc(r.mentions)}</span>` : ""}</td>
   <td>${md(r.psychology)}</td>
-  <td>${(r.evidence || []).map((e) => `<em>${plain(e.text)}</em> —— ${esc(maskAuthor(e.author))}, ${esc(e.star)}★, ${esc(e.sku)}`).join("<br>")}${(r.contrast || []).length ? `<br><span class="b b-green">正向对照</span> ` + r.contrast.map((c) => `<em>${plain(c.text)}</em> —— ${esc(maskAuthor(c.author))}, ${esc(c.star)}★, ${esc(c.sku)}`).join("；") : ""}</td>
+  <td>${(r.evidence || []).map((e) => `<em>${quote(e,r.name||r.dimension)}</em> —— ${esc(maskAuthor(e.author))}, ${esc(e.star)}★, ${esc(e.sku)}`).join("<br>")}${(r.contrast || []).length ? `<br><span class="b b-green">正向对照</span> ` + r.contrast.map((c) => `<em>${quote(c,r.dimension)}</em> —— ${esc(maskAuthor(c.author))}, ${esc(c.star)}★, ${esc(c.sku)}`).join("；") : ""}</td>
   <td>${(r.listingActions || []).map((a) => md(a)).join("<br><br>")}</td>
-  <td>${(r.supplyActions || []).map((a) => md(a)).join("<br><br>")}</td>
+  <td>${(r.supplyActions || []).map((a) => md(a)).join("<br><br>")}${r.expectedEffect?`<div class="expected-effect"><strong>验收方式：</strong>${md(r.expectedEffect)}</div>`:""}</td>
 </tr>`).join("");
   const p = d.priority || {};
   return `<h2 id="d5"><span class="n">06</span>维度五 · 消费者购买顾虑与对策</h2>
@@ -497,6 +504,7 @@ export function renderReport(r, opt = {}) {
     chVerdict(r.verdict || {}),
     chBasics(r.basics || {}),
     chVariantLayering(r.variantLayering || {}),
+    r.variantInsight ? `<div class="callout info"><p class="t">${esc(r.variantInsight.title)}</p><p>${md(r.variantInsight.body)}</p></div>` : "",
     chDim1(r.dimensions?.sellingPoints || {}),
     chDim2(r.dimensions?.feedback || {}),
     chDim3(r.dimensions?.keywords || {}),
@@ -505,7 +513,7 @@ export function renderReport(r, opt = {}) {
     chVisual(r.visual || {}),
     chActions(r.actions || {}),
     chCredibility(r.credibility || {}),
-    chFoot(r.footer || {}),
+    chFoot(r.footer || r.credibility?.footer || {}),
   ];
   const anchors = opt.showAnchors === false ? "" : `<div class="anchorbar no-print"><div class="inner">${
     ANCHORS.map(([id, label]) => `<a href="#${id}">${esc(label)}</a>`).join("")

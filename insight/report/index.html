@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>洞察报告 · 用户洞察 V2</title>
-<link rel="stylesheet" href="../assets/tokens.css">
-<link rel="stylesheet" href="../assets/app.css">
+<link rel="stylesheet" href="../assets/report-reference.css">
 </head>
 <body>
 <div id="topbar"></div>
@@ -13,9 +12,9 @@
 
 <script type="module">
 import { mountTopbar, loadReport, getTask, qs, esc, toast } from "../assets/app.mjs";
-import { renderReport, renderReportDocument, validateReport } from "../assets/report-template.mjs";
+import { renderReport, renderReportDocument, validateReport } from "../assets/report-template.mjs?v=reference-1";
 
-mountTopbar("report");
+// Reference report begins directly with its hero; tools stay in a collapsed dock.
 const root = document.getElementById("report-root");
 const id = qs("id");
 const task = id ? await getTask(id) : null;
@@ -41,9 +40,9 @@ async function main() {
       "<pre style=\"white-space:pre-wrap;font-size:12px;\">" + esc(v.errors.join("\n")) + "</pre>");
   }
 
-  const { html, warnings } = renderReport(report, { showAnchors: true });
+  const { html, warnings } = renderReport(report, { showAnchors: false });
 
-  const toolbar = `<div class="wrap no-print" style="padding-bottom:0;">
+  const toolbar = `<details class="report-tools no-print"><summary>报告工具</summary><div>
     <p class="crumb"><a href="../index.html">工作台</a> / <a href="../library/index.html">报告库</a> / 洞察报告</p>
     <div class="toolbar" style="margin-top:0;">
       <span class="b b-green">报告已完成来源校验</span>
@@ -60,7 +59,7 @@ async function main() {
       <button class="btn sm" id="pdf">导出 PDF</button>
     </div>
     ${warnings.length ? `<div class="callout info no-print" style="margin-top:12px;"><p class="t">M6 提示（${warnings.length} 条）</p><p class="mini">${esc(warnings.join("；"))}</p></div>` : ""}
-  </div>`;
+  </div></details>`;
 
   root.innerHTML = toolbar + html;
 
@@ -95,7 +94,7 @@ async function main() {
   });
 
   document.getElementById("dl").addEventListener("click", async () => {
-    const css = await Promise.all(["tokens.css","app.css"].map(async n=>{const r=await fetch("../assets/"+n);if(!r.ok)throw Error("样式加载失败");return r.text();}));
+    const css = await Promise.all(["report-reference.css"].map(async n=>{const r=await fetch("../assets/"+n);if(!r.ok)throw Error("样式加载失败");return r.text();}));
     const doc = renderReportDocument(report,{css:css.join("\n")});
     const blob = new Blob([doc], { type: "text/html;charset=utf-8" });
     const a = document.createElement("a");
