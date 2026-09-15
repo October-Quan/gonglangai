@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>洞察报告 · 用户洞察 V2</title>
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/app.css">
+</head>
+<body>
+<div id="topbar"></div>
+<div id="report-root"></div>
+
+<script type="module">
+import { mountTopbar, loadReport, getTask, qs, esc, toast } from "../assets/app.mjs";
+import { renderReport, renderReportDocument, validateReport } from "../assets/report-template.mjs";
+
+mountTopbar("report");
+const root = document.getElementById("report-root");
+const id = qs("id");
+const task = id ? await getTask(id) : null;
+
+function notice(tone, title, body) {
+  root.innerHTML = `<div class="wrap"><p class="crumb"><a href="../index.html">工作台</a> / 洞察报告</p>
+    <div class="callout ${tone}"><p class="t">${esc(title)}</p><p>${body}</p></div></div>`;
+}
+
+async function main() {
+  if (!task) return notice("warn", "找不到该任务", "请从<a href=\"../index.html\">工作台</a>重新发起分析。");
+  if (!task.dataFile) {
+    return notice("warn", "该任务没有可展示的报告",
+      "任务状态为 <strong>" + esc(task.status) + "</strong>。按设计，未完成任务不显示任何报告入口，也不用推测数据补全后出片。");
+  }
+
+  const report = await loadReport(task);
+
+  // M6 校验：不通过则不渲染（与工人侧同一函数）
+  const v = validateReport(report);
+  if (v.errors.length) {
+    return notice("warn", "M6 可信度层拦截：报告未通过校验",
+      "<pre style=\"white-space:pre-wrap;font-size:12px;\">" + esc(v.errors.join("\n")) + "</pre>");
+  }
+
+  const { html, warnings } = renderReport(report, { showAnchors: true });
+
+  const toolbar = `<div class="wrap no-print" style="padding-bottom:0;">
+    <p class="crumb"><a href="../index.html">工作台</a> / <a href="../library/index.html">报告库</a> / 洞察报告</p>
+    <div class="toolbar" style="margin-top:0;">
+      <span class="b b-green">报告已完成来源校验</span>
+      <span class="b b-gray">引用已逐字核验</span>
+      <span class="b b-gray">数据源 SellerSprite</span>
+      <span class="b b-gray">抓取 ${esc(report.meta.fetchedAt)}</span>
+    </div>
+    <div class="toolbar" style="margin-top:0;">
+      <span class="chip">缓存生成于 <b>${esc(report.meta.fetchedAt)}</b> · 相同账号与参数在 24 小时内复用已有任务</span>
+      <button class="btn ghost sm" id="refresh">强制刷新</button>
+      <a class="btn ghost sm" href="visual.html?id=${encodeURIComponent(id)}">视觉工坊</a>
+      <a class="btn ghost sm" href="actions.html?id=${encodeURIComponent(id)}">行动看板</a>
+      <button class="btn ghost sm" id="dl">下载 HTML</button>
+      <button class="btn sm" id="pdf">导出 PDF</button>
+    </div>
+    ${warnings.length ? `<div class="callout info no-print" style="margin-top:12px;"><p class="t">M6 提示（${warnings.length} 条）</p><p class="mini">${esc(warnings.join("；"))}</p></div>` : ""}
+  </div>`;
+
+  root.innerHTML = toolbar + html;
+
+  // 内容为动态注入，浏览器不会自动跳到 hash 锚点，这里手动滚一次
+  if (location.hash) {
+    const t = document.querySelector(location.hash);
+    if (t) setTimeout(() => t.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  }
+
+  // 复制 Prompt：只复制英文 Prompt 全文（含负向提示词）
+  root.querySelectorAll("[data-copy-scene]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const idx = Number(btn.dataset.copyScene);
+      const scene = report.visual.scenes.find((s) => s.idx === idx);
+      const text = scene.en + (scene.negative ? `\n\nNegative: ${scene.negative}` : "");
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand("copy"); ta.remove();
+      }
+      btn.classList.add("ok"); btn.textContent = "已复制";
+      setTimeout(() => { btn.classList.remove("ok"); btn.textContent = "复制 Prompt"; }, 1600);
+      toast(`场景 ${idx} 的英文 Prompt 已复制（含负向提示词）`);
+    });
+  });
+
+  document.getElementById("pdf").addEventListener("click", () => {
+    toast("调用系统打印，选择「存储为 PDF」；导出保留全部颜色与边框");
+    setTimeout(() => window.print(), 400);
+  });
+
+  document.getElementById("dl").addEventListener("click", async () => {
+    const css = await Promise.all(["tokens.css","app.css"].map(async n=>{const r=await fetch("../assets/"+n);if(!r.ok)throw Error("样式加载失败");return r.text();}));
+    const doc = renderReportDocument(report,{css:css.join("\n")});
+    const blob = new Blob([doc], { type: "text/html;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${report.meta.asin}_用户洞察报告.html`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast("已导出包含样式的单文件 HTML");
+  });
+
+  document.getElementById("refresh").addEventListener("click", () => {
+    toast("重新分析需新的额度授权，当前继续保留已有报告", "warn");
+  });
+}
+
+main().catch((e) => notice("warn", "渲染失败", esc(String(e && e.message || e))));
+</script>
+</body>
+</html>

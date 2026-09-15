@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>报告库 · 用户洞察 V2</title>
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/app.css">
+</head>
+<body>
+<div id="topbar"></div>
+<div class="wrap">
+  <p class="crumb"><a href="../index.html">工作台</a> / 报告库</p>
+  <h2 style="margin-top:0;"><span class="n">LIB</span>报告库</h2>
+
+  <div class="toolbar">
+    <div class="grow"><input type="text" id="q" placeholder="搜索 ASIN / 商品标题 / 主要问题"></div>
+    <select id="mk"><option value="">全部站点</option><option>US</option><option>JP</option><option>UK</option><option>DE</option><option>CA</option></select>
+    <select id="sort"><option value="new">按抓取时间倒序</option><option value="rating">按评分升序（先看问题款）</option><option value="asin">按 ASIN 升序</option></select>
+    <button class="btn ghost sm" id="reset">刷新报告库</button>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="panel soft"><h3>复测对比</h3><p class="mini">需至少两次同口径分析；当前未自动计算改善效果，请从报告库打开对应报告核对。</p></div>
+</div>
+
+<script type="module">
+import { mountTopbar, getState, setState, esc, refreshState, toast } from "../assets/app.mjs";
+
+mountTopbar("library");
+let s = getState();
+
+function rows() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const mk = document.getElementById("mk").value;
+  const sort = document.getElementById("sort").value;
+  let list = s.tasks.filter((t) => t.reportId);
+  if (q) list = list.filter((t) => [t.asin, t.title, t.mainIssue].filter(Boolean).join(" ").toLowerCase().includes(q));
+  if (mk) list = list.filter((t) => t.marketplace === mk);
+  if (sort === "rating") list = [...list].sort((a, b) => (a.rating ?? 9) - (b.rating ?? 9));
+  else if (sort === "asin") list = [...list].sort((a, b) => a.asin.localeCompare(b.asin));
+  return list;
+}
+
+function render() {
+  const list = rows();
+  document.getElementById("list").innerHTML = list.length ? `<ul class="list">${list.map((t) => {
+    const tone = t.rating == null ? "b-gray" : t.rating < 3.5 ? "b-red" : t.rating < 4 ? "b-amber" : "b-green";
+    return `<li>
+      <div class="thumb">${esc(t.asin.slice(-4))}</div>
+      <div class="bd">
+        <div class="t1">${esc(t.title || t.asin)}</div>
+        <div class="t2">${esc(t.mainIssue || "")}</div>
+        <div class="t3"><span>ASIN ${esc(t.asin)}</span><span>站点 ${esc(t.marketplace)}</span>
+          <span>评论 ${t.reviewCount ?? "—"}</span><span>流量词 ${t.keywordCount ?? "—"}</span>
+          <span>${esc(t.createdAt)}</span></div>
+      </div>
+      <div class="rt">
+        <span class="b ${tone}">评分 ${t.rating ?? "—"}</span>
+        <a class="btn ghost sm" href="../report/index.html?id=${encodeURIComponent(t.id)}">报告</a>
+        <a class="btn ghost sm" href="../report/visual.html?id=${encodeURIComponent(t.id)}">视觉</a>
+        <a class="btn ghost sm" href="../report/actions.html?id=${encodeURIComponent(t.id)}">行动</a>
+      </div>
+    </li>`;
+  }).join("")}</ul>` : `<div class="empty">没有匹配的报告。清空筛选条件，或回到<a href="../index.html">工作台</a>发起一次分析。</div>`;
+}
+
+["q", "mk", "sort"].forEach((i) => document.getElementById(i).addEventListener("input", render));
+document.getElementById("reset").addEventListener("click", async () => {
+  try{s = await refreshState();render();toast("报告库已刷新");}catch(e){toast(e.message,"warn");}
+});
+render();
+</script>
+</body>
+</html>

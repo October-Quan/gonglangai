@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工作台 · 用户洞察 V2</title>
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div id="topbar"></div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="tag">Apparel UserInsight Agent · V2.0</div>
+    <h1>用户洞察工作台
+      <small>输入一个 ASIN，输出一份每条结论都可回溯到买家原声、每个问题都翻译成可执行动作的商业决策与视觉落地报告</small>
+    </h1>
+    <div class="meta">
+      <span class="chip">核心切面 <b>变体分层</b></span>
+      <span class="chip">信任机制 <b>原声可回溯</b></span>
+      <span class="chip">目标耗时 <b>按实际进度</b></span>
+      <span class="chip">章节完整度 <b>100%</b></span>
+      <span class="chip">数据源 <b>SellerSprite</b></span>
+    </div>
+  </div>
+
+  <!-- 唯一强引导：ASIN 输入 -->
+  <div class="asin-hero">
+    <div class="field" id="f-asin" style="margin-bottom:12px;">
+      <label for="asin">ASIN <span class="req">*</span></label>
+      <div class="row">
+        <div class="grow"><input type="text" id="asin" placeholder="B0FFH442BW" maxlength="10" autocomplete="off" spellcheck="false"></div>
+        <div>
+          <label for="mk" style="font-size:11.5px;color:var(--ink3);font-weight:600;display:block;margin-bottom:5px;">站点</label>
+          <select id="mk">
+            <option value="US">US 🇺🇸</option>
+            <option value="JP">JP（Beta）</option>
+            <option value="UK">UK（Beta）</option>
+            <option value="DE">DE（Beta）</option>
+            <option value="CA">CA（Beta）</option>
+          </select>
+        </div>
+        <button class="btn" id="go">开始分析</button>
+      </div>
+      <div class="err" id="asin-err">ASIN 格式不正确（应为 B0 + 8 位大写字母数字，如 B0FFH442BW）。校验不通过不会发起任何请求。</div>
+      <div class="hint">MVP 默认全量抓取评论——样本完整性是结论可信的前提。同一 ASIN + 站点 24 小时内重复提交将复用已有任务，不重复消耗额度。</div>
+    </div>
+  </div>
+
+  <div class="score" id="kpis"></div>
+
+  <div class="panel">
+    <div class="panel-h">
+      <h3>最近报告</h3>
+      <div class="right"><a class="btn ghost sm" href="library/index.html">进入报告库</a></div>
+    </div>
+    <ul class="list" id="recent"></ul>
+    <div class="empty" id="recent-empty" style="display:none;">还没有报告。输入上方 ASIN 开始第一次分析。</div>
+  </div>
+
+  <div class="panel soft">
+    <div class="panel-h"><h3>数据源额度</h3><div class="right"><a class="btn ghost sm" href="settings/sources.html">授权与额度</a></div></div>
+    <div id="quota"></div>
+    <p class="mini" style="margin-top:12px;">额度耗尽或接口返回 <code>secret_no_remaining</code> / <code>secret_expired</code> / <code>secret_unauthorized</code> 时，任务必须<strong>显性失败</strong>并明示失败步骤，不允许用推测数据补全后继续生成报告。</p>
+  </div>
+</div>
+
+<script type="module">
+import { mountTopbar, getState, setState, validAsin, maskAsin, qs, esc, toast } from "./assets/app.mjs";
+
+mountTopbar("home");
+const s = getState();
+
+/* 指标卡 */
+const done = s.tasks.filter((t) => t.status === "DONE").length;
+const failed = s.tasks.filter((t) => t.status === "FAILED").length;
+const totalActions = "—";
+document.getElementById("kpis").innerHTML = [
+  { k: "最近报告数", v: String(done), d: "成功生成并可在报告库检索", tone: "g" },
+  { k: "已执行建议数", v: String(totalActions), d: "请在行动看板查看每份报告的执行情况", tone: "a" },
+  { k: "失败任务", v: String(failed), d: "失败必须显性记录，不使用推测数据补全", tone: failed ? "r" : "" },
+  { k: "数据源额度", v: "待核验", d: "未读取账户实时余额", tone: "" },
+].map((c) => `<div class="kpi ${c.tone}"><div class="k">${c.k}</div><div class="v">${c.v}</div><div class="d">${c.d}</div></div>`).join("");
+
+/* 额度条 */
+document.getElementById("quota").textContent="账户实时余额待核验；每个任务按已批准的独立额度执行。";
+
+/* 最近报告 */
+const reports = s.tasks.filter((t) => t.Status !== "FAILED" && t.reportId);
+function reportRow(t) {
+  const tone = t.rating == null ? "" : t.rating < 3.5 ? "b-red" : t.rating < 4 ? "b-amber" : "b-green";
+  return `<li>
+    <div class="thumb">${esc(t.asin.slice(-4))}</div>
+    <div class="bd">
+      <div class="t1">${esc(t.title || t.asin)}</div>
+      <div class="t2">${esc(t.mainIssue || "")}</div>
+      <div class="t3">
+        <span>ASIN ${esc(t.asin)}</span><span>站点 ${esc(t.marketplace)}</span>
+        <span>评论 ${t.reviewCount ?? "—"} 条</span><span>流量词 ${t.keywordCount ?? "—"} 个</span>
+        <span>耗时 ${t.durationMs ? (t.durationMs / 1000).toFixed(1) + "s" : "—"}</span>
+        <span>${esc(t.createdAt)}</span>
+      </div>
+    </div>
+    <div class="rt">
+      ${t.rating != null ? `<span class="b ${tone}">评分 ${t.rating}</span>` : ""}
+      <a class="btn ghost sm" href="report/index.html?id=${encodeURIComponent(t.id)}">查看报告</a>
+    </div>
+  </li>`;
+}
+const recent = s.tasks.filter((t) => t.reportId);
+document.getElementById("recent").innerHTML = recent.map(reportRow).join("");
+document.getElementById("recent-empty").style.display = recent.length ? "none" : "block";
+
+/* 校验 + 提交 */
+const asinEl = document.getElementById("asin");
+const field = document.getElementById("f-asin");
+asinEl.value = maskAsin(qs("asin") || "");
+asinEl.addEventListener("input", () => {
+  asinEl.value = asinEl.value.toUpperCase();
+  field.classList.remove("invalid");
+});
+document.getElementById("go").addEventListener("click", () => {
+  const v = asinEl.value.trim().toUpperCase();
+  if (!validAsin(v)) { field.classList.add("invalid"); asinEl.focus(); return; }
+  location.href = `new/index.html?asin=${encodeURIComponent(v)}&mk=${document.getElementById("mk").value}`;
+});
+asinEl.addEventListener("keydown", (e) => { if (e.key === "Enter") document.getElementById("go").click(); });
+</script>
+</body>
+</html>

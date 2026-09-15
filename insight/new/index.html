@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新建分析 · 用户洞察 V2</title>
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/app.css">
+</head>
+<body>
+<div id="topbar"></div>
+
+<div class="wrap">
+  <p class="crumb"><a href="../index.html">工作台</a> / 新建分析</p>
+  <h2 style="margin-top:0;"><span class="n">NEW</span>新建分析</h2>
+  <p class="lead">表单只收 5 个输入项。校验在前端完成，格式不通过<strong>不发起任何请求、不消耗额度</strong>。</p>
+
+  <div class="grid-2">
+    <div>
+      <div class="panel">
+        <h3>输入项</h3>
+
+        <div class="field" id="f-asin">
+          <label for="asin">ASIN <span class="req">*</span></label>
+          <input type="text" id="asin" placeholder="B0FFH442BW" maxlength="10" autocomplete="off" spellcheck="false">
+          <div class="err" id="e-asin">ASIN 格式不正确（应为 B0 + 8 位大写字母数字）。</div>
+        </div>
+
+        <div class="field">
+          <label for="mk">站点 <span class="req">*</span></label>
+          <select id="mk">
+            <option value="US">US — 美国（MVP 默认，已实测）</option>
+            <option value="JP">JP — 日本（Beta）</option>
+            <option value="UK">UK — 英国（Beta）</option>
+            <option value="DE">DE — 德国（Beta）</option>
+            <option value="FR">FR — 法国（Beta）</option>
+            <option value="IT">IT — 意大利（Beta）</option>
+            <option value="ES">ES — 西班牙（Beta）</option>
+            <option value="CA">CA — 加拿大（Beta）</option>
+          </select>
+          <div class="hint">非 US 站点归为 Beta：接口字段完整度与评论覆盖尚未验证。</div>
+        </div>
+
+        <div class="field">
+          <label for="depth">分析深度</label>
+          <select id="depth" disabled>
+            <option value="标准（全量）" selected>标准 · 全量翻页（默认，样本完整性优先）</option>
+            <option value="快速（≤30 条）">快速 · ≤30 条（省额度，结论置信度下降）</option>
+            <option value="深度（全量 + 时间窗）">深度 · 全量 + 时间窗口过滤</option>
+          </select>
+          <div class="hint">默认全量：样本完整性是结论可信的前提；成本通过 24 小时缓存与幂等控制。</div>
+        </div>
+
+        <div class="field" id="f-focus">
+          <label for="focus">重点颜色（可选）</label>
+          <input type="text" id="focus" placeholder="如 White, Gray（留空＝自动分层全部颜色）" autocomplete="off">
+          <div class="hint">留空时系统自动按 <code>skus</code> 字段拆分全部颜色并独立计分。</div>
+        </div>
+
+        <div class="field">
+          <label for="ctx">品牌上下文（可选）</label>
+          <textarea id="ctx" placeholder="品牌调性、价格定位、目标人群。用于提升对策建议的贴合度。"></textarea>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <button class="btn" id="go">确认并开始</button>
+          <a class="btn ghost" href="../index.html">取消</a>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel soft">
+        <h3>本次将执行什么（预检）</h3>
+        <table class="compact">
+          <tbody>
+            <tr><th style="width:132px">接口</th><td><code>asin_detail</code> · 1 次</td></tr>
+            <tr><th>评论分页</th><td>先取第 1 页读 <code>pages</code> / <code>total</code>，再循环翻页至 <code>hasNextPage === false</code>，最后校验 <code>items.length === total</code>。<strong>不依赖 <code>size</code> 参数</strong>（服务端会忽略，固定每页 20 条）。</td></tr>
+            <tr><th>搜索词</th><td><code>traffic_keyword</code> · <strong>默认不加 <code>trafficKeywordTypes</code> 过滤</strong>（实测会把 55 个词收窄到 3 个）</td></tr>
+            <tr><th>模型调用</th><td>五维洞察，严格 JSON Schema；<strong>所有数值字段由代码注入，模型无权生成或修正</strong></td></tr>
+            <tr><th>校验</th><td>M6 可信度层：佐证绑定率 100% · 数值回源一致率 100% · 样本完整率 100% · 买家名脱敏</td></tr>
+            <tr><th>缓存</th><td>ASIN 维度缓存 24 小时，命中时报告页显著标注生成时间并提供「强制刷新」</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <p class="t">失败即失败，不做降级</p>
+        <p>任一步失败（接口报错、翻页条数与 <code>total</code> 不一致、Schema 校验不通过）→ 任务置为 <code>FAILED</code>，明示失败步骤与原因。<strong>绝不允许用推测数据补全后继续生成报告。</strong></p>
+      </div>
+
+      <div class="callout info">
+        <p class="t">幂等提示</p>
+        <p>同一 ASIN + 站点在 24 小时内重复提交，将直接返回已有任务，不新建、不重复消耗数据源额度。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { mountTopbar, validAsin, maskAsin, qs, createTask, toast } from "../assets/app.mjs";
+
+mountTopbar("new");
+
+const asinEl = document.getElementById("asin");
+const mkEl = document.getElementById("mk");
+const fAsin = document.getElementById("f-asin");
+
+asinEl.value = maskAsin(qs("asin") || "");
+if (qs("mk")) mkEl.value = qs("mk");
+
+asinEl.addEventListener("input", () => {
+  asinEl.value = asinEl.value.toUpperCase();
+  const v = asinEl.value.trim();
+  fAsin.classList.toggle("invalid", v.length > 0 && !validAsin(v));
+});
+
+document.getElementById("go").addEventListener("click", async () => {
+  const asin = maskAsin(asinEl.value);
+  if (!validAsin(asin)) { fAsin.classList.add("invalid"); asinEl.focus(); return; }
+
+  const focus = document.getElementById("focus").value.trim();
+  const btn=document.getElementById("go");btn.disabled=true;
+  try {
+  const task = await createTask({
+    asin,
+    marketplace: mkEl.value,
+    reviewDepth: document.getElementById("depth").value,
+    focusColor: focus,
+    brandContext: document.getElementById("ctx").value.trim(),
+  });
+
+  toast("任务已创建，进入分析进度页");
+  location.href = `../task/index.html?id=${encodeURIComponent(task.id)}`;
+  } catch(e) {toast(e.message,"warn");} finally {btn.disabled=false;}
+});
+</script>
+</body>
+</html>

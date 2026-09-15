@@ -1,0 +1,208 @@
+/* ============================================================
+   用户洞察 V2 · 设计令牌与组件库
+   权威来源：服装类目用户洞察 Agent PRD v1.0 第 07 节 + 附录速查表
+   硬约束：禁止在组件内硬编码颜色值，一律引用本文件令牌。
+   ============================================================ */
+
+:root{
+  /* 基础层 */
+  --bg:#ffffff;
+  --panel:#f7f8fa;
+  --panel2:#eef1f5;
+  --ink:#16181d;
+  --ink2:#3d434e;
+  --ink3:#6b7280;
+  --line:#e2e6ec;
+  --line2:#cdd4de;
+
+  /* 语义层 —— 红黄绿分级（强制语义，非可选配色） */
+  --red:#c62828;    --redbg:#fdecec;    --redline:#f2cccc;
+  --amber:#b26a00;  --amberbg:#fdf3e2;  --amberline:#f0dcb8;
+  --green:#1b7a43;  --greenbg:#e9f7ef;  --greenline:#c6e6d4;
+  --blue:#1f5fa9;   --bluebg:#eaf2fc;   --blueline:#cfe0f5;
+  --purple:#6b3fa0; --purplebg:#f2ecfa; --purpleline:#ddd0ef;
+
+  /* 字体 */
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --font-mono:ui-monospace,Menlo,Consolas,monospace;
+
+  /* 反白与深色面（日志 / 代码块 / 深底按钮） */
+  --on-dark:#ffffff;      /* 深色底上的文字 */
+  --placeholder:#9aa3af;  /* 输入框占位符 */
+  --code-bg:#0f1116;      /* 英文 Prompt / 日志底 */
+  --code-ink:#e7edf5;     /* 代码块正文 */
+  --log-ink:#c8d3e0;      /* 日志正文 */
+  --log-ok:#8fe3b0;       /* 日志·成功行 */
+  --log-info:#f0b366;      /* 日志·步骤行 */
+  --log-warn:#e8899a;     /* 日志·警告行 */
+
+  /* 布局 */
+  --wrap-max:1080px;
+  --radius-card:10px;
+  --radius-hero:14px;
+  --radius-badge:5px;
+  --gap-section:44px;
+
+  /* 星级色 */
+  --st5:#1b7a43;
+  --st4:#7aa53a;
+  --st3:#b26a00;
+  --st2:#d97706;
+  --st1:#c62828;
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--font-sans);
+  font-size:14px; line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:var(--wrap-max);margin:0 auto;padding:44px 32px 80px;}
+
+/* ---------- 排版 ---------- */
+h2{
+  font-size:19px; margin:var(--gap-section) 0 6px; padding-bottom:10px; letter-spacing:-.2px;
+  border-bottom:2px solid var(--ink); display:flex; align-items:baseline; gap:10px;
+}
+h2 .n{
+  font-size:12px;font-weight:700;color:#fff;background:var(--ink);
+  padding:2px 8px;border-radius:6px;letter-spacing:.06em;flex:none;
+}
+h3{font-size:15.5px;margin:28px 0 10px;color:var(--ink);}
+h4{font-size:13.5px;margin:20px 0 8px;color:var(--ink2);font-weight:700;}
+p{margin:10px 0;color:var(--ink2);}
+.lead{font-size:15px;color:var(--ink);}
+ul,ol{margin:10px 0;padding-left:22px;color:var(--ink2);}
+li{margin:6px 0;}
+strong{color:var(--ink);}
+code{background:var(--panel2);padding:1px 6px;border-radius:5px;font-size:12.5px;font-family:var(--font-mono);}
+.mini{font-size:12px;color:var(--ink3);margin-top:-4px;}
+.hr{height:1px;background:var(--line);margin:24px 0;}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+
+/* ---------- 表格 ---------- */
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px;}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top;}
+th{background:var(--panel);font-weight:700;color:var(--ink);font-size:12.5px;letter-spacing:.02em;}
+tbody tr:nth-child(even){background:#fbfcfd;}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+table.compact th,table.compact td{padding:7px 9px;font-size:12.5px;}
+.table-scroll{overflow-x:auto;}
+
+/* ---------- 徽章 ---------- */
+.b{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:var(--radius-badge);white-space:nowrap;line-height:1.6;}
+.b-red{color:var(--red);background:var(--redbg);border:1px solid var(--redline);}
+.b-amber{color:var(--amber);background:var(--amberbg);border:1px solid var(--amberline);}
+.b-green{color:var(--green);background:var(--greenbg);border:1px solid var(--greenline);}
+.b-blue{color:var(--blue);background:var(--bluebg);border:1px solid var(--blueline);}
+.b-gray{color:var(--ink3);background:var(--panel2);border:1px solid var(--line2);}
+.b-purple{color:var(--purple);background:var(--purplebg);border:1px solid var(--purpleline);}
+
+/* ---------- ① Hero 页头区 ---------- */
+.hero{
+  border:1px solid var(--line); border-radius:var(--radius-hero); padding:28px 30px;
+  background:linear-gradient(135deg,#fbfcfe 0%,#f2f5f9 100%);
+  margin-bottom:30px;
+}
+.hero .tag{
+  display:inline-block; font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--blue); background:var(--bluebg); border:1px solid var(--blueline);
+  padding:4px 10px; border-radius:999px; font-weight:700; margin-bottom:14px;
+}
+.hero h1{margin:0 0 8px; font-size:26px; line-height:1.35; letter-spacing:-.4px;}
+.hero h1 small{display:block;font-size:14px;font-weight:500;color:var(--ink3);letter-spacing:0;margin-top:6px;}
+.hero .meta{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;}
+.chip{
+  font-size:12px;color:var(--ink2);background:#fff;border:1px solid var(--line);
+  padding:4px 11px;border-radius:8px;font-variant-numeric:tabular-nums;
+}
+.chip b{color:var(--ink);}
+
+/* ---------- ② 指标卡 Scorecard ---------- */
+.score{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px;margin:18px 0;}
+.score .c{border:1px solid var(--line);border-radius:11px;padding:14px 15px;background:#fff;}
+.score .c .k{font-size:11.5px;color:var(--ink3);letter-spacing:.03em;}
+.score .c .v{font-size:22px;font-weight:800;margin:5px 0 3px;font-variant-numeric:tabular-nums;letter-spacing:-.5px;}
+.score .c .d{font-size:11.5px;color:var(--ink3);line-height:1.5;}
+.score .c.r{background:var(--redbg);border-color:var(--redline);}
+.score .c.r .v{color:var(--red);}
+.score .c.a{background:var(--amberbg);border-color:var(--amberline);}
+.score .c.a .v{color:var(--amber);}
+.score .c.g{background:var(--greenbg);border-color:var(--greenline);}
+.score .c.g .v{color:var(--green);}
+
+/* ---------- ④ Callout 提示块 ---------- */
+.callout{border-left:4px solid var(--ink);background:var(--panel);padding:14px 18px;border-radius:0 10px 10px 0;margin:16px 0;}
+.callout.warn{border-left-color:var(--red);background:var(--redbg);}
+.callout.good{border-left-color:var(--green);background:var(--greenbg);}
+.callout.info{border-left-color:var(--blue);background:var(--bluebg);}
+.callout.purple{border-left-color:var(--purple);background:var(--purplebg);}
+.callout p{margin:5px 0;}
+.callout .t{font-weight:800;color:var(--ink);}
+
+/* ---------- ⑤ 评价卡 Review Card ---------- */
+.rev{border:1px solid var(--line);border-radius:var(--radius-card);padding:12px 14px;margin:10px 0;background:#fff;}
+.rev .h{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;margin-bottom:6px;}
+.rev .who{font-weight:700;color:var(--ink);}
+.rev .sku{color:var(--ink3);font-size:11.5px;background:var(--panel2);padding:1px 6px;border-radius:5px;}
+.rev .stars{letter-spacing:1px;font-size:12px;}
+.st5{color:var(--st5);} .st4{color:var(--st4);} .st3{color:var(--st3);} .st2{color:var(--st2);} .st1{color:var(--st1);}
+.rev .q{font-size:12.5px;color:var(--ink2);font-style:italic;border-left:3px solid var(--line2);padding-left:11px;margin-top:5px;}
+.rev .cn{font-size:12px;color:var(--ink3);margin-top:6px;}
+
+/* ---------- ⑥ Prompt 卡片 ---------- */
+.prompt{border:1px solid var(--line2);border-radius:12px;overflow:hidden;margin:18px 0 24px;}
+.prompt .ph{background:var(--ink);color:var(--on-dark,#fff);padding:11px 16px;font-weight:700;font-size:13.5px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;}
+.prompt .ph span{font-weight:500;font-size:11.5px;opacity:.75;}
+.prompt .pb{padding:16px 18px;background:#fff;}
+.prompt .lbl{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin:14px 0 6px;}
+.prompt .lbl:first-child{margin-top:0;}
+.prompt .en-wrap{position:relative;}
+.prompt .en{
+  background:#0f1116;color:#e7edf5;border-radius:9px;padding:14px 16px;
+  font-family:var(--font-mono);font-size:12px;line-height:1.78;
+  white-space:pre-wrap;word-break:break-word;
+}
+.prompt .neg{background:var(--redbg);border:1px dashed var(--redline);color:#8a2222;border-radius:9px;padding:11px 14px;font-family:var(--font-mono);font-size:11.5px;line-height:1.7;}
+.prompt .cnbox{background:var(--panel);border-radius:9px;padding:12px 15px;font-size:12.5px;color:var(--ink2);}
+.prompt .cnbox b{color:var(--ink);}
+.caption{background:var(--greenbg);border:1px solid var(--greenline);border-radius:9px;padding:11px 14px;font-size:12.5px;color:#14532d;}
+.caption b{color:#14532d;}
+
+/* ---------- ⑦ 优先级块 ---------- */
+.pr{border:1px solid var(--line);border-radius:var(--radius-card);padding:14px 18px;margin:12px 0;background:#fff;}
+.pr .t{font-weight:800;font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.pr ul{margin:6px 0 0;}
+.pr ul li{margin:8px 0;}
+.p0{border-left:5px solid var(--red);}
+.p1{border-left:5px solid var(--amber);}
+.p2{border-left:5px solid var(--green);}
+
+/* ---------- 页脚 ---------- */
+.foot{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink3);}
+
+/* ---------- 响应式（报告类页面不做卡片化重排，保留表格语义） ---------- */
+@media (max-width:1080px){
+  .score{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
+}
+@media (max-width:768px){
+  .wrap{padding:24px 16px 60px;}
+  .hero{padding:20px 18px;}
+  .hero h1{font-size:21px;}
+  table{font-size:12.5px;}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .table-scroll table{min-width:640px;}
+  .score{grid-template-columns:repeat(auto-fit,minmax(132px,1fr));}
+}
+
+/* ---------- 打印：保留全部颜色与边框 ---------- */
+@media print{
+  *{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  .wrap{padding:0;max-width:none;}
+  .hero{margin-bottom:18px;}
+  .rev,.pr,.prompt{break-inside:avoid;}
+  table{break-inside:auto;}
+  tr{break-inside:avoid;}
+  .no-print{display:none !important;}
+}

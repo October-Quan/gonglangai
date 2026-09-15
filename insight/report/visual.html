@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视觉工坊 · 用户洞察 V2</title>
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/app.css">
+</head>
+<body>
+<div id="topbar"></div>
+<div class="wrap">
+  <p class="crumb"><a href="../index.html">工作台</a> / <a href="index.html?id=">洞察报告</a> / 视觉工坊</p>
+  <div class="hero">
+    <div class="tag">Visual Workshop · M4</div>
+    <h1>视觉工坊
+      <small>输入自动取自维度四的 Top 3 高置信度场景——不支持手选低置信场景，避免把预算浪费在无数据支撑的拍摄上</small>
+    </h1>
+    <div class="meta" id="vmeta"></div>
+  </div>
+</div>
+<div id="vbody"></div>
+
+<script type="module">
+import { mountTopbar, loadReport, getTask, qs, esc, toast } from "../assets/app.mjs";
+import { renderReport } from "../assets/report-template.mjs";
+
+mountTopbar("visual");
+const id = qs("id");
+const task = id ? await getTask(id) : null;
+const body = document.getElementById("vbody");
+
+const reportHref = `index.html?id=${encodeURIComponent(id || "")}`;
+document.querySelector(".crumb").innerHTML =
+  `<a href="../index.html">工作台</a> / <a href="${reportHref}">洞察报告</a> / 视觉工坊`;
+
+async function main() {
+  if (!task || !task.dataFile) {
+    body.innerHTML = `<div class="wrap"><div class="callout warn"><p class="t">没有可用的场景数据</p>
+      <p>视觉工坊的输入来自某份已完成报告的维度四。<a href="../index.html">回到工作台</a>选择一份报告。</p></div></div>`;
+    return;
+  }
+  const report = await loadReport(task);
+  const visual = report.visual;
+  const scenes = visual.scenes || [];
+
+  document.getElementById("vmeta").innerHTML = [
+    ["ASIN", report.meta.asin],
+    ["商品", report.meta.title],
+    ["场景数", scenes.length + " 组"],
+    ["模型适配", "nano banana 2"],
+    ["输出", "英文 Prompt + 中文解析 + 副图文案"],
+  ].map(([k, v]) => `<span class="chip">${esc(k)} <b>${esc(v)}</b></span>`).join("");
+
+  // 场景分配依据（从维度四取置信度，只带出高置信场景）
+  const topScenes = (report.dimensions.scenes.rows || []).filter((r) => r.confidenceTone === "green" || r.confidenceTone === "amber");
+  const reasonTable = `<div class="wrap" style="padding-bottom:0;"><div class="panel">
+    <div class="panel-h"><h3>这 3 组场景是怎么选出来的</h3></div>
+    <div class="table-scroll"><table class="compact">
+      <thead><tr><th>排序</th><th>场景</th><th class="num">提及</th><th>置信度</th><th>是否进入工坊</th></tr></thead>
+      <tbody>${(report.dimensions.scenes.rows || []).map((r) => `<tr>
+        <td class="num">${r.rank}</td><td>${esc(r.name)}</td><td class="num">${esc(r.mentions)}</td>
+        <td>${esc(r.confidence)}</td>
+        <td>${r.confidenceTone === "red" ? '<span class="b b-red">不进入</span> 零数据支撑，不分配视觉资源' : '<span class="b b-green">进入</span>'}</td>
+      </tr>`).join("")}</tbody>
+    </table></div>
+    <p class="mini">配色为红/黄/绿分级：红＝零数据支撑；黄＝样本少但信号强；绿＝评论与搜索双印证。场景 4（跨季叠穿）为低置信，按设计走 A+ 长图而非副图。</p>
+  </div></div>`;
+
+  const cards = scenes.map((s) => `<div class="prompt" data-scene="${s.idx}">
+    <div class="ph"><span style="font-weight:700">场景 ${esc(s.idx)} ${esc(s.title)}</span><span>${esc(s.subtitle || "")}</span>
+      <button class="copy-btn no-print" data-copy-scene="${s.idx}" type="button">复制 Prompt</button></div>
+    <div class="pb">
+      <div class="lbl">English Prompt（nano banana 2）</div>
+      <div class="en-wrap"><div class="en">${esc(s.en)}</div></div>
+      ${s.negative ? `<div class="lbl">负向提示词</div><div class="neg">${esc(s.negative)}</div>` : ""}
+      <div class="lbl">中文解析 · 逐要素说明为什么这样写</div>
+      <div class="cnbox">${(s.cn || []).map((c) => `<b>${esc(c.k)}：</b>${esc(c.v)}`).join("<br>")}</div>
+      <div class="lbl">副图标注文案建议</div>
+      <div class="caption">
+        <b>主标题：</b>${esc(s.caption.title)}<br>
+        ${s.caption.subtitle ? `<b>副标题：</b>${esc(s.caption.subtitle)}<br>` : ""}
+        ${(s.caption.badges || []).length ? `<b>角标 / 徽章：</b>${s.caption.badges.map(esc).join(" ｜ ")}<br>` : ""}
+        ${s.caption.layout ? `<b>排版提示：</b>${esc(s.caption.layout)}<br>` : ""}
+        ${s.caption.note ? `<b>时机建议：</b>${esc(s.caption.note)}` : ""}
+      </div>
+    </div>
+  </div>`).join("");
+
+  body.innerHTML = reasonTable + `<div class="wrap" style="padding-top:0;">
+    <div class="callout info no-print">
+      <p class="t">复制规则</p>
+      <p>每张卡右上角的「复制」<strong>只复制英文 Prompt 全文（含负向提示词）</strong>；中文解析与副图文案建议区不参与复制。</p>
+    </div>
+    <p class="mini">通用负向提示词（三组均适用）：<code>${esc(visual.sharedNegative)}</code></p>
+    ${cards}
+    <div class="callout purple no-print">
+      <p class="t">V2 边界说明</p>
+      <p>按本轮确认范围，视觉工坊<strong>只交付 Prompt 与文案</strong>，不直连生图。生图能力（Prompt → 出图 → 下载成品副图）不在本次范围内。</p>
+    </div>
+  </div>`;
+
+  body.querySelectorAll("[data-copy-scene]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const idx = Number(btn.dataset.copyScene);
+      const s = scenes.find((x) => x.idx === idx);
+      const text = s.en + (s.negative ? `\n\nNegative: ${s.negative}` : "");
+      try { await navigator.clipboard.writeText(text); }
+      catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand("copy"); ta.remove();
+      }
+      btn.classList.add("ok"); btn.textContent = "已复制";
+      setTimeout(() => { btn.classList.remove("ok"); btn.textContent = "复制 Prompt"; }, 1600);
+      toast(`场景 ${idx} 的英文 Prompt 已复制`);
+    });
+  });
+}
+
+main().catch((e) => { body.innerHTML = `<div class="wrap"><div class="callout warn"><p class="t">加载失败</p><p>${esc(String(e && e.message || e))}</p></div></div>`; });
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分析进度 · 用户洞察 V2</title>
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/app.css">
+</head>
+<body>
+<div id="topbar"></div>
+
+<div class="wrap">
+  <p class="crumb"><a href="../index.html">工作台</a> / 分析进度</p>
+
+  <div class="hero">
+    <div class="tag">Task Progress</div>
+    <h1 id="task-title">分析中…
+      <small id="task-sub">—</small>
+    </h1>
+    <div class="meta" id="task-meta"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-h">
+      <h3>六阶段进度</h3>
+      <div class="right">
+        <span class="b b-blue" id="mode-tag">等待服务器状态</span>
+        <button class="btn ghost sm" id="cancel">取消任务</button>
+      </div>
+    </div>
+    <div class="progress" id="bar"><i></i></div>
+    <ul class="stages" id="stages"></ul>
+  </div>
+
+  <div class="panel">
+    <div class="panel-h"><h3>实时日志</h3><div class="right"><span class="mini" id="pct">0%</span></div></div>
+    <div class="log" id="log"></div>
+    <p class="mini" style="margin-top:12px;">进度必须真实反映完成条数，不做"假进度条"。刷新或断线恢复后从服务器读取已保存状态。</p>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script type="module" src="../assets/task.mjs"></script>
+</body>
+</html>
