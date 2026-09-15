@@ -244,7 +244,25 @@ function reviewCard(e,topic='') {
 }
 
 function evidenceList(list,topic='') {
-  return (list || []).map(e=>reviewCard(e,topic)).join("\n");
+  return foldItems((list || []).map(e=>reviewCard(e,topic)), 1, "条评论");
+}
+
+function foldItems(items, limit=1, label="项内容") {
+  if (items.length <= limit) return items.join("");
+  return items.slice(0,limit).join("") + `<details class="report-fold"><summary><span class="fold-more">展开其余 ${items.length-limit} ${label}</span><span class="fold-less">收起更多内容</span></summary><div class="fold-body">${items.slice(limit).join("")}</div></details>`;
+}
+function inlineEvidence(list, topic='') {
+ return foldItems((list||[]).map(e=>`<div class="evidence-item"><div class="evidence-quote">${quote(e,topic)}</div><div class="mini">—— ${esc(maskAuthor(e.author))}, ${esc(e.star)}★${e.sku ? ` · ${esc(e.sku)}` : ''}</div></div>`),1,"条原声");
+}
+function compactKeywordTables(html) {
+ return html.replace(/<table([^>]*)>([\s\S]*?)<tbody>([\s\S]*?)<\/tbody><\/table>/g, (all,attrs,head,body)=>{
+  const rows=body.match(/<tr\b[\s\S]*?<\/tr>/g)||[];
+  const data=rows.filter(row=>!row.includes('colspan='));
+  const summary=rows.filter(row=>row.includes('colspan=')).join('');
+  if(data.length<=10)return all;
+  const table=part=>`<table${attrs}>${head}<tbody>${part}</tbody></table>`;
+  return table(data.slice(0,10).join('')+summary)+`<details class="report-fold keyword-fold"><summary><span class="fold-more">展开其余 ${data.length-10} 个关键词 · 共 ${data.length} 个</span><span class="fold-less">收起关键词 · 显示前 10 行</span></summary><div class="fold-body">${table(data.slice(10).join(''))}</div></details>`;
+ });
 }
 
 function num(v, dash = "—") {
@@ -312,11 +330,11 @@ function chDim1(d) {
   <td class="num">${esc(it.idx)}</td>
   <td><strong>${md(it.point)}</strong></td>
   <td>${md(it.buyerValue)}</td>
-  <td>${(it.evidence || []).map((e) => `<em>${quote(e,it.point)}</em> —— ${esc(maskAuthor(e.author))}, ${esc(e.star)}★`).join("<br>")}</td>
+  <td>${inlineEvidence(it.evidence,it.point)}</td>
 </tr>`).join("");
   return `<h2 id="d1"><span class="n">02</span>维度一 · 产品核心卖点提炼</h2>
 <p>${md(d.intro)}</p>
-<div class="table-scroll"><table>
+<div class="table-scroll"><table class="selling-table">
 <thead><tr><th style="width:36px">#</th><th style="width:150px">核心卖点</th><th>买家实际获得的价值</th><th style="width:250px">买家原声佐证</th></tr></thead>
 <tbody>${rows}</tbody></table></div>
 ${d.takeaway ? `<div class="callout good"><p class="t">${esc(d.takeaway.title)}</p><p>${md(d.takeaway.body)}</p></div>` : ""}`;
@@ -396,7 +414,7 @@ function chDim4(d) {
   <td><strong>${md(r.name)}</strong>${r.en ? `<br><span class="mini">${esc(r.en)}</span>` : ""}</td>
   <td class="num"><strong>${esc(r.mentions)}</strong><br>${esc(r.share)}</td>
   <td>${tag(r.confidence, r.confidenceTone)}</td>
-  <td>${(r.evidence || []).map((e) => `<em>${quote(e,r.name||r.dimension)}</em> —— ${esc(maskAuthor(e.author))}, ${esc(e.star)}★, ${esc(e.sku)}`).join("<br>")}${r.notes ? `<br>${md(r.notes)}` : ""}</td>
+  <td>${inlineEvidence(r.evidence,r.name||r.dimension)}${r.notes ? `<br>${md(r.notes)}` : ""}</td>
 </tr>`).join("");
   return `<h2 id="d4"><span class="n">05</span>维度四 · 典型使用场景梳理</h2>
 <p class="mini">${md(d.intro)}</p>
@@ -410,9 +428,9 @@ function chDim5(d) {
   const rows = (d.rows || []).map((r) => `<tr>
   <td><strong>${md(r.dimension)}</strong><br>${tag(r.stage, r.stageTone)}${r.mentions ? `<br><span class="mini">${esc(r.mentions)}</span>` : ""}</td>
   <td>${md(r.psychology)}</td>
-  <td>${(r.evidence || []).map((e) => `<em>${quote(e,r.name||r.dimension)}</em> —— ${esc(maskAuthor(e.author))}, ${esc(e.star)}★, ${esc(e.sku)}`).join("<br>")}${(r.contrast || []).length ? `<br><span class="b b-green">正向对照</span> ` + r.contrast.map((c) => `<em>${quote(c,r.dimension)}</em> —— ${esc(maskAuthor(c.author))}, ${esc(c.star)}★, ${esc(c.sku)}`).join("；") : ""}</td>
-  <td>${(r.listingActions || []).map((a) => md(a)).join("<br><br>")}</td>
-  <td>${(r.supplyActions || []).map((a) => md(a)).join("<br><br>")}${r.expectedEffect?`<div class="expected-effect"><strong>验收方式：</strong>${md(r.expectedEffect)}</div>`:""}</td>
+  <td>${inlineEvidence(r.evidence,r.name||r.dimension)}${(r.contrast || []).length ? `<br><span class="b b-green">正向对照</span> ` + r.contrast.map((c) => `<em>${quote(c,r.dimension)}</em> —— ${esc(maskAuthor(c.author))}, ${esc(c.star)}★, ${esc(c.sku)}`).join("；") : ""}</td>
+  <td>${foldItems((r.listingActions || []).map(a=>`<p>${md(a)}</p>`),1,"项对策")}</td>
+  <td>${foldItems((r.supplyActions || []).map(a=>`<p>${md(a)}</p>`),1,"项对策")}${r.expectedEffect?`<div class="expected-effect"><strong>验收方式：</strong>${md(r.expectedEffect)}</div>`:""}</td>
 </tr>`).join("");
   const p = d.priority || {};
   return `<h2 id="d5"><span class="n">06</span>维度五 · 消费者购买顾虑与对策</h2>
@@ -427,7 +445,7 @@ function chVisual(v) {
   const scenes = (v.scenes || []).map((s) => `<div class="prompt" data-scene="${s.idx}">
   <div class="ph"><span style="font-weight:700">场景 ${esc(s.idx)} ${esc(s.title)}</span><span>${esc(s.subtitle || "")}</span>
     <button class="copy-btn no-print" data-copy-scene="${s.idx}" type="button">复制 Prompt</button></div>
-  <div class="pb">
+  <details class="report-fold visual-fold"><summary>展开摄影提示词与文案方案</summary><div class="pb">
     <div class="lbl">English Prompt（nano banana 2）</div>
     <div class="en-wrap"><div class="en">${esc(s.en)}</div></div>
     ${s.negative ? `<div class="lbl">负向提示词</div><div class="neg">${esc(s.negative)}</div>` : ""}
@@ -441,7 +459,7 @@ function chVisual(v) {
       ${s.caption?.layout ? `<b>排版提示：</b>${md(s.caption.layout)}<br>` : ""}
       ${s.caption?.note ? `<b>时机建议：</b>${md(s.caption.note)}` : ""}
     </div>
-  </div>
+  </div></details>
 </div>`).join("\n");
   return `<h2 id="visual"><span class="n">07</span>视觉落地 · Top ${(v.scenes || []).length} 场景副图 AI 摄影提示词</h2>
 <p>${md(v.intro)}</p>
@@ -507,7 +525,7 @@ export function renderReport(r, opt = {}) {
     r.variantInsight ? `<div class="callout info"><p class="t">${esc(r.variantInsight.title)}</p><p>${md(r.variantInsight.body)}</p></div>` : "",
     chDim1(r.dimensions?.sellingPoints || {}),
     chDim2(r.dimensions?.feedback || {}),
-    chDim3(r.dimensions?.keywords || {}),
+    compactKeywordTables(chDim3(r.dimensions?.keywords || {})),
     chDim4(r.dimensions?.scenes || {}),
     chDim5(r.dimensions?.concerns || {}),
     chVisual(r.visual || {}),

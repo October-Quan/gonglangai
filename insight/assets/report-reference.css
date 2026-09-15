@@ -148,3 +148,18 @@ table.compact th,table.compact td{padding:7px 9px;font-size:12.5px;}
 @media print{.no-print,.report-tools{display:none!important;} .wrap{padding:0;max-width:none;}details.source-full:not([open]){display:none;}}
 
 .btn,.copy-btn{display:inline-flex;align-items:center;font:600 12px -apple-system,sans-serif;padding:6px 10px;border:1px solid var(--line2);border-radius:6px;background:white;color:var(--ink);cursor:pointer;text-decoration:none;}.copy-btn{border-color:#ffffff40;background:#ffffff15;color:white;font-size:11px;} .b-purple{color:var(--purple);background:var(--purplebg);} .report-tools a{color:var(--blue);} .table-scroll{max-width:100%;}
+
+/* Compact reading: preserves full evidence and native keyboard interaction. */
+.report-fold { margin:10px 0; border:1px solid var(--line,#dfe3e9); border-radius:8px; background:#fafbfc; }
+.report-fold > summary { cursor:pointer; padding:9px 12px; color:#506781; font-size:13px; font-weight:600; }
+.report-fold > summary:hover { background:#eef3f8; border-radius:8px; }
+.report-fold > summary:focus-visible { outline:2px solid #5085ba; outline-offset:2px; }
+.fold-body { padding:8px 12px; }
+.fold-less { display:none; }.report-fold[open] > summary .fold-more {display:none}.report-fold[open] > summary .fold-less {display:inline}
+.evidence-item { margin:0 0 8px; }.evidence-quote {font-style:italic;}.evidence-item .mini {margin-top:6px;}
+.selling-table {table-layout:fixed;width:100%}.selling-table th:nth-child(2){width:24%!important}.selling-table th:nth-child(4){width:32%!important}
+.selling-table td {vertical-align:top}.selling-table td:nth-child(2),.selling-table td:nth-child(3){line-height:1.75}
+.keyword-fold .fold-body{padding:0;overflow-x:auto}.keyword-fold table{margin:0;width:100%}
+.visual-fold{margin:0;border:0;border-top:1px solid #e0e5ec;border-radius:0;background:white}
+@media print { .report-fold > summary,.source-full > summary{display:none!important}.report-fold > .fold-body,.report-fold > .pb,.source-full{display:block!important}.report-fold{border:0;background:white}details::details-content{content-visibility:visible!important;display:block!important} }
+@media(max-width:700px){.selling-table{min-width:700px}.report-fold > summary{min-height:42px;box-sizing:border-box}}
